@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intelligent QR CODE GENERATOR with Custom Design & Branding</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="logo-area">
+        <i data-lucide="qr-code" class="brand-icon"></i>
+        <h1>InstaQR <span>Studio</span></h1>
+      </div>
+      <p class="subtitle">Design & share stunning Instagram-styled QR codes instantly</p>
+    </header>
+
+    <main class="main-layout">
+      <!-- Left Column: Controls Sidebar -->
+      <section class="sidebar-panel">
+        <div class="glass-card">
+          <!-- Step 1: Content Setup -->
+          <div class="control-section">
+            <h2 class="section-title"><span class="step-num">1</span> QR Code Content</h2>
+            
+            <div class="tabs-header">
+              <button class="tab-btn active" data-tab="url">
+                <i data-lucide="link-2"></i> URL
+              </button>
+              <button class="tab-btn" data-tab="text">
+                <i data-lucide="align-left"></i> Text
+              </button>
+              <button class="tab-btn" data-tab="wifi">
+                <i data-lucide="wifi"></i> Wi-Fi
+              </button>
+              <button class="tab-btn" data-tab="profile">
+                <i data-lucide="user"></i> Profile
+              </button>
+            </div>
+
+            <div class="tabs-content">
+              <!-- URL Input Tab -->
+              <div class="tab-pane active" id="tab-url">
+                <div class="input-group">
+                  <label for="qr-url">Website or Link URL</label>
+                  <div class="input-wrapper">
+                    <i data-lucide="globe" class="input-icon"></i>
+                    <input type="url" id="qr-url" placeholder="HI WELCOME"
+                </div>
+              </div>
+
+              <!-- Text Input Tab -->
+              <div class="tab-pane" id="tab-text">
+                <div class="input-group">
+                  <label for="qr-text">Custom Text Message</label>
+                  <textarea id="qr-text" placeholder="Type your custom message here..." rows="3"></textarea>
+                </div>
+              </div>
+
+              <!-- Wi-Fi Input Tab -->
+              <div class="tab-pane" id="tab-wifi">
+                <div class="grid-2">
+                  <div class="input-group">
+                    <label for="wifi-ssid">Network Name (SSID)</label>
+                    <input type="text" id="wifi-ssid" placeholder="My Home WiFi">
+                  </div>
+                  <div class="input-group">
+                    <label for="wifi-password">Password</label>
+                    <input type="password" id="wifi-password" placeholder="••••••••">
+                  </div>
+                </div>
+                <div class="input-group" style="margin-top: 10px;">
+                  <label for="wifi-encryption">Encryption Type</label>
+                  <select id="wifi-encryption">
+                    <option value="WPA" selected>WPA/WPA2</option>
+                    <option value="WEP">WEP</option>
+                    <option value="nopass">None (Open)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Profile Input Tab -->
+              <div class="tab-pane" id="tab-profile">
+                <div class="grid-2">
+                  <div class="input-group">
+                    <label for="profile-name">Display Name</label>
+                    <input type="text" id="profile-name" placeholder="John Doe">
+                  </div>
+                  <div class="input-group">
+                    <label for="profile-handle">Social @Handle</label>
+                    <input type="text" id="profile-handle" placeholder="@johndoe">
+                  </div>
+                </div>
+                <div class="input-group" style="margin-top: 10px;">
+                  <label for="profile-type">Profile Type</label>
+                  <select id="profile-type">
+                    <option value="Instagram" selected>Instagram</option>
+                    <option value="Twitter">Twitter / X</option>
+                    <option value="LinkedIn">LinkedIn</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Linktree">Linktree</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <!-- Step 2: Background Customizer -->
+          <div class="control-section">
+            <h2 class="section-title"><span class="step-num">2</span> Card Background</h2>
+            
+            <div class="bg-mode-selector">
+              <button class="mode-btn active" data-mode="gradient">
+                <i data-lucide="palette"></i> Gradient
+              </button>
+              <button class="mode-btn" data-mode="emoji">
+                <i data-lucide="smile"></i> Emojis
+              </button>
+              <button class="mode-btn" data-mode="solid">
+                <i data-lucide="paint-bucket"></i> Solid Color
+              </button>
+            </div>
+
+            <!-- Gradient options -->
+            <div class="mode-settings active" id="settings-gradient">
+              <label>Preset Gradients</label>
+              <div class="preset-grid" id="gradient-presets">
+                <!-- Injected dynamically by JS -->
+              </div>
+              
+              <div class="custom-gradient-panel">
+                <label>Custom Gradient Colors</label>
+                <div class="color-picker-pair">
+                  <div class="color-picker-wrapper">
+                    <input type="color" id="grad-color-1" value="#ff5f6d">
+                    <span>Color 1</span>
+                  </div>
+                  <div class="color-picker-wrapper">
+                    <input type="color" id="grad-color-2" value="#ffc371">
+                    <span>Color 2</span>
+                  </div>
+                  <div class="angle-picker-wrapper">
+                    <label for="grad-angle" id="angle-val">135°</label>
+                    <input type="range" id="grad-angle" min="0" max="360" value="135">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Emoji options -->
+            <div class="mode-settings" id="settings-emoji">
+              <label>Choose Background Emoji</label>
+              <div class="emoji-grid" id="emoji-presets">
+                <!-- Injected dynamically by JS -->
+              </div>
+              
+              <div class="custom-emoji-input">
+                <label for="custom-emoji-text">Or paste custom emoji(s)</label>
+                <div class="flex-row">
+                  <input type="text" id="custom-emoji-text" maxlength="4" placeholder="🔥" value="🔥">
+                  <button id="apply-custom-emoji" class="btn btn-secondary">Apply</button>
+                </div>
+              </div>
+
+              <div class="range-controls">
+                <div class="range-group">
+                  <div class="range-label">
+                    <span>Emoji Size</span>
+                    <span id="emoji-size-val">32px</span>
+                  </div>
+                  <input type="range" id="emoji-size" min="16" max="64" value="32">
+                </div>
+                <div class="range-group">
+                  <div class="range-label">
+                    <span>Density / Spacing</span>
+                    <span id="emoji-spacing-val">60px</span>
+                  </div>
+                  <input type="range" id="emoji-spacing" min="40" max="100" value="60">
+                </div>
+                <div class="range-group">
+                  <div class="range-label">
+                    <span>Rotation Angle</span>
+                    <span id="emoji-angle-val">-15°</span>
+                  </div>
+                  <input type="range" id="emoji-angle" min="-90" max="90" value="-15">
+                </div>
+              </div>
+            </div>
+
+            <!-- Solid Color options -->
+            <div class="mode-settings" id="settings-solid">
+              <label>Background Color</label>
+              <div class="color-picker-pair">
+                <div class="color-picker-wrapper wide">
+                  <input type="color" id="solid-color" value="#7d5fff">
+                  <span id="solid-color-hex">#7d5fff</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <!-- Step 3: QR & Card Styling -->
+          <div class="control-section">
+            <h2 class="section-title"><span class="step-num">3</span> QR Style & Branding</h2>
+            
+            <div class="accordion-item">
+              <div class="accordion-header">
+                <h3>QR Code Design</h3>
+                <i data-lucide="chevron-down"></i>
+              </div>
+              <div class="accordion-content open">
+                <div class="input-group">
+                  <label for="qr-design-style">Module Style (Data blocks)</label>
+                  <select id="qr-design-style">
+                    <option value="dots" selected>Circles / Dots (Insta-style)</option>
+                    <option value="classic">Classic Squares</option>
+                    <option value="liquid">Liquid / Connected Rounded</option>
+                  </select>
+                </div>
+
+                <div class="input-group">
+                  <label for="qr-eye-style">Eye Frame Style (Three outer corners)</label>
+                  <select id="qr-eye-style">
+                    <option value="rounded" selected>Rounded Circles</option>
+                    <option value="smooth">Smooth Rounded Rect</option>
+                    <option value="classic">Standard Square</option>
+                  </select>
+                </div>
+
+                <div class="grid-2">
+                  <div class="input-group">
+                    <label for="qr-fg-color">QR Color</label>
+                    <div class="color-picker-wrapper text-label">
+                      <input type="color" id="qr-fg-color" value="#000000">
+                      <select id="qr-color-mode" style="padding: 2px 4px; font-size: 11px;">
+                        <option value="solid" selected>Solid</option>
+                        <option value="grad">Gradient</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="input-group">
+                    <label for="qr-bg-color">QR Inner BG</label>
+                    <div class="color-picker-wrapper text-label">
+                      <input type="color" id="qr-bg-color" value="#ffffff">
+                      <span style="font-size: 11px; font-weight: 500;">Fill</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <div class="accordion-header">
+                <h3>Card Branding & Label</h3>
+                <i data-lucide="chevron-down"></i>
+              </div>
+              <div class="accordion-content">
+                <div class="input-group">
+                  <label for="card-username">Card Footer Text</label>
+                  <div class="input-wrapper">
+                    <i data-lucide="at-sign" class="input-icon"></i>
+                    <input type="text" id="card-username" placeholder="@yourhandle" value="@HEMANTH">
+                  </div>
+                </div>
+
+                <div class="input-group">
+                  <label for="card-font">Typography</label>
+                  <select id="card-font">
+                    <option value="Outfit" selected>Outfit (Modern sans)</option>
+                    <option value="Inter">Inter (Clean)</option>
+                    <option value="Playfair Display">Playfair (Elegant serif)</option>
+                    <option value="Fira Code">Fira Code (Monospace)</option>
+                  </select>
+                </div>
+
+                <div class="toggle-group">
+                  <label for="show-insta-logo">Show Icon in Footer</label>
+                  <input type="checkbox" id="show-insta-logo" checked>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-item">
+              <div class="accordion-header">
+                <h3>Center Logo / Icon</h3>
+                <i data-lucide="chevron-down"></i>
+              </div>
+              <div class="accordion-content">
+                <div class="logo-preset-grid">
+                  <button class="logo-preset-btn active" data-logo="instagram">
+                    <i data-lucide="instagram"></i>
+                  </button>
+                  <button class="logo-preset-btn" data-logo="link">
+                    <i data-lucide="link"></i>
+                  </button>
+                  <button class="logo-preset-btn" data-logo="heart">
+                    <i data-lucide="heart"></i>
+                  </button>
+                  <button class="logo-preset-btn" data-logo="sparkles">
+                    <i data-lucide="sparkles"></i>
+                  </button>
+                  <button class="logo-preset-btn" data-logo="none">
+                    <span>None</span>
+                  </button>
+                </div>
+
+                <div class="custom-logo-upload">
+                  <label for="logo-upload">Or Upload Custom Icon (PNG/JPG)</label>
+                  <input type="file" id="logo-upload" accept="image/*">
+                </div>
+
+                <div class="range-group" style="margin-top: 10px;">
+                  <div class="range-label">
+                    <span>Logo Scale</span>
+                    <span id="logo-scale-val">20%</span>
+                  </div>
+                  <input type="range" id="logo-scale" min="12" max="28" value="20">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Interactive Card Preview -->
+      <section class="preview-panel">
+        <div class="preview-sticky">
+          <!-- Parallax mouse-hover card wrapper -->
+          <div class="tilt-container" id="tilt-container">
+            <!-- This is the element captured by html2canvas -->
+            <div class="share-card-container" id="share-card-container">
+              <!-- Animated Background Layer -->
+              <div class="card-bg-layer" id="card-bg-layer"></div>
+              
+              <!-- Glass Card Frame -->
+              <div class="insta-glass-card" id="insta-glass-card">
+                <!-- QR Code Rendering Canvas -->
+                <div class="qr-canvas-wrapper">
+                  <canvas id="qr-canvas"></canvas>
+                </div>
+                
+                <!-- Card Footer Branding -->
+                <div class="card-footer" id="card-footer-branding">
+                  <i data-lucide="instagram" class="footer-logo" id="footer-logo-icon"></i>
+                  <span class="username-text" id="username-text">@HEMANTH</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="action-buttons-group">
+            <button class="btn btn-primary btn-icon-full" id="btn-download-card">
+              <i data-lucide="download"></i> Download Card
+            </button>
+            <button class="btn btn-secondary btn-icon-full" id="btn-copy-card">
+              <i data-lucide="copy"></i> Copy Card
+            </button>
+            <button class="btn btn-ghost btn-icon-full" id="btn-download-qr">
+              <i data-lucide="qr-code"></i> Download QR Only
+            </button>
+          </div>
+          
+          <div class="status-indicator" id="export-status">
+            <!-- Notification messages like "Copied!" or "Downloading..." will show here -->
+          </div>
+        </div>
+      </section>
+    </main>
+    
+    <footer class="app-footer-bar">
+      <p>Made with ❤️ in style • Open index.html directly in browser to run</p>
+    </footer>
+  </div>
+
+  <!-- JS Libraries -->
+  <!-- QRCode-Generator: generates QR data grid -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <!-- html2canvas: screenshot cards -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <!-- Custom JS Application Code -->
+  <script src="app.js"></script>
+</body>
+</html>
