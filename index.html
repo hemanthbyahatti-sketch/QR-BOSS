@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Intelligent QR CODE GENERATOR with Custom Design & Branding</title>
+  <title>Advanced QR Code Generator</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,9 +18,9 @@
     <header class="app-header">
       <div class="logo-area">
         <i data-lucide="qr-code" class="brand-icon"></i>
-        <h1>InstaQR <span>Studio</span></h1>
+        <h1>INSTANT QR CODE <span>GENERATOR</span></h1>
       </div>
-      <p class="subtitle">Design & share stunning Instagram-styled QR codes instantly</p>
+      <p class="subtitle">Create and customize stunning QR codes for any purpose</p>
     </header>
 
     <main class="main-layout">
@@ -53,7 +53,7 @@
                   <label for="qr-url">Website or Link URL</label>
                   <div class="input-wrapper">
                     <i data-lucide="globe" class="input-icon"></i>
-                    <input type="url" id="qr-url" placeholder="HI WELCOME">
+                    <input type="url" id="qr-url" placeholder="https://example.com/yourpage" value="https://example.com/">
                   </div>
                 </div>
               </div>
@@ -103,10 +103,10 @@
                 <div class="input-group" style="margin-top: 10px;">
                   <label for="profile-type">Profile Type</label>
                   <select id="profile-type">
-                    <option value="Instagram" selected>Instagram</option>
-                    <option value="Twitter">Twitter / X</option>
+                    <option value="Twitter" selected>Twitter / X</option>
                     <option value="LinkedIn">LinkedIn</option>
                     <option value="YouTube">YouTube</option>
+                    <option value="Instagram">Instagram</option>
                     <option value="Linktree">Linktree</option>
                   </select>
                 </div>
@@ -225,7 +225,7 @@
                 <div class="input-group">
                   <label for="qr-design-style">Module Style (Data blocks)</label>
                   <select id="qr-design-style">
-                    <option value="dots" selected>Circles / Dots (Insta-style)</option>
+                    <option value="dots" selected>Circles / Dots</option>
                     <option value="classic">Classic Squares</option>
                     <option value="liquid">Liquid / Connected Rounded</option>
                   </select>
@@ -272,7 +272,7 @@
                   <label for="card-username">Card Footer Text</label>
                   <div class="input-wrapper">
                     <i data-lucide="at-sign" class="input-icon"></i>
-                    <input type="text" id="card-username" placeholder="@yourhandle" value="@HEMANTH">
+                    <input type="text" id="card-username" placeholder="@yourhandle" value="">
                   </div>
                 </div>
 
@@ -287,8 +287,8 @@
                 </div>
 
                 <div class="toggle-group">
-                  <label for="show-insta-logo">Show Icon in Footer</label>
-                  <input type="checkbox" id="show-insta-logo" checked>
+                  <label for="show-logo-overlay">Show Icon in Footer</label>
+                  <input type="checkbox" id="show-logo-overlay" checked>
                 </div>
               </div>
             </div>
@@ -300,10 +300,7 @@
               </div>
               <div class="accordion-content">
                 <div class="logo-preset-grid">
-                  <button class="logo-preset-btn active" data-logo="instagram">
-                    <i data-lucide="instagram"></i>
-                  </button>
-                  <button class="logo-preset-btn" data-logo="link">
+                  <button class="logo-preset-btn active" data-logo="link">
                     <i data-lucide="link"></i>
                   </button>
                   <button class="logo-preset-btn" data-logo="heart">
@@ -354,8 +351,8 @@
                 
                 <!-- Card Footer Branding -->
                 <div class="card-footer" id="card-footer-branding">
-                  <i data-lucide="instagram" class="footer-logo" id="footer-logo-icon"></i>
-                  <span class="username-text" id="username-text">@HEMANTH</span>
+                  <i data-lucide="qr-code" class="footer-logo" id="footer-logo-icon"></i>
+                  <span class="username-text" id="username-text"></span>
                 </div>
               </div>
             </div>
@@ -382,7 +379,7 @@
     </main>
     
     <footer class="app-footer-bar">
-      <p>Made with ❤️ in style • Open index.html directly in browser to run</p>
+      <p>Made with ❤️ in style BY PBL TEAM 2ND SEM 2026</p>
     </footer>
   </div>
 

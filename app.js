@@ -1,6 +1,6 @@
 /*
+ * Advanced QR Code Generator
  * Premium Application Logic
- * Intelligent QR CODE GENERATOR with Custom Design & Branding
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -26,15 +26,15 @@ document.addEventListener('DOMContentLoaded', () => {
     qrBgColor: '#ffffff',
     qrColorMode: 'solid', // 'solid', 'grad'
     footerText: 'USERNAME',
-    showInstaLogo: true,
-    activeLogoPreset: 'NONE', // 'instagram', 'link', 'heart', 'sparkles', 'none', 'custom'
+    showLogoOverlay: true,
+    activeLogoPreset: 'link', // 'link', 'heart', 'sparkles', 'none', 'custom'
     logoScale: 0.20,
     customLogoDataUrl: null,
   };
 
   // PRESET DATA
   const GRADIENT_PRESETS = [
-    { name: 'Instagram Sunset', c1: '#f09433', c2: '#bc1888', angle: 45 },
+    { name: 'Warm Sunset', c1: '#f09433', c2: '#bc1888', angle: 45 },
     { name: 'Aurora Glow', c1: '#00c6ff', c2: '#0072ff', angle: 135 },
     { name: 'Cherry Blossom', c1: '#ff5f6d', c2: '#ffc371', angle: 135 },
     { name: 'Midnight Violet', c1: '#141517', c2: '#7f00ff', angle: 135 },
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Solar Pop', c1: '#ff7a00', c2: '#ff3d8f', angle: 70 }
   ];
 
-  const EMOJI_PRESETS = ['🔥', '✨', '💖', '😎', '🍕', '🚀', '💡', '🌈', '🎨', '🎉', '👾', '🥑', '🎸', '✈️', '🍀', '🌟'];
+  const EMOJI_PRESETS = ['🔥', '✨', '💖', '😎', '🍕', '🚀', '💡', '🌈', '🎨', '🎉', '👾', '🥑', '🎸', '✈️', '🍀', '🌟', '👌', '😘', '💕'];
 
   const VECTOR_LOGOS = {
     instagram: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>`,
@@ -259,10 +259,10 @@ document.addEventListener('DOMContentLoaded', () => {
     usernameText.style.fontFamily = `"${font}", var(--font-sans)`;
   });
 
-  const showInstaLogoCheckbox = document.getElementById('show-insta-logo');
-  showInstaLogoCheckbox.addEventListener('change', (e) => {
-    state.showInstaLogo = e.target.checked;
-    footerLogoIcon.style.display = state.showInstaLogo ? 'block' : 'none';
+  const showLogoOverlayCheckbox = document.getElementById('show-logo-overlay');
+  showLogoOverlayCheckbox.addEventListener('change', (e) => {
+    state.showLogoOverlay = e.target.checked;
+    footerLogoIcon.style.display = state.showLogoOverlay ? 'block' : 'none';
   });
 
   // Center Logo Select
@@ -328,9 +328,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function getQRDataContent() {
     switch (state.activeTab) {
       case 'url':
-        return qrUrlInput.value.trim() || 'https://instagram.com';
+        return qrUrlInput.value.trim() || 'https://example.com';
       case 'text':
-        return qrTextInput.value.trim() || 'Welcome to InstaQR Studio';
+        return qrTextInput.value.trim() || 'Welcome to QR Code Generator';
       case 'wifi':
         const ssid = wifiSSIDInput.value.trim() || 'WiFi';
         const password = wifiPasswordInput.value.trim() || '';
@@ -345,10 +345,10 @@ document.addEventListener('DOMContentLoaded', () => {
           case 'LinkedIn': return `https://linkedin.com/in/${handle}`;
           case 'YouTube': return `https://youtube.com/@${handle}`;
           case 'Linktree': return `https://linktr.ee/${handle}`;
-          default: return `https://instagram.com/${handle}`;
+          default: return `https://example.com/${handle}`;
         }
       default:
-        return 'https://instagram.com';
+        return 'https://example.com';
     }
   }
 
@@ -552,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
     drawEye(0, moduleCount - 7); // Top Right
 
     // 4. Center Logo Masking & Rendering
-    if (state.activeLogoPreset !== 'none') {
+    if (state.activeLogoPreset !== 'none' && state.showLogoOverlay) {
       const logoSize = canvasRes * state.logoScale;
       const lx = (canvasRes - logoSize) / 2;
       const ly = (canvasRes - logoSize) / 2;
@@ -640,7 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }).then(canvas => {
         const dataUrl = canvas.toDataURL('image/png');
         const link = document.createElement('a');
-        link.download = `insta_qr_${state.footerText.replace('@', '') || 'card'}.png`;
+        link.download = `qr_code_${state.footerText.replace('@', '') || 'card'}.png`;
         link.href = dataUrl;
         link.click();
         showStatus('Card Downloaded successfully!');
@@ -685,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function downloadQRImageOnly() {
     const dataUrl = qrCanvas.toDataURL('image/png');
     const link = document.createElement('a');
-    link.download = `qr_only_${state.footerText.replace('@', '') || 'code'}.png`;
+    link.download = `qr_code_only_${state.footerText.replace('@', '') || 'code'}.png`;
     link.href = dataUrl;
     link.click();
     showStatus('QR Code Only Downloaded!');
