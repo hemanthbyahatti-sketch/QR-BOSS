@@ -88,7 +88,7 @@ class MediaServer(BaseHTTPRequestHandler):
             self.send_error(404, "Gallery not found")
             return
 
-        if path in ("/app.js", "/style.css", "/favicon.ico"):
+        if path in ("/app.js", "/media-config.js", "/style.css", "/favicon.ico"):
             self.serve_file(path.lstrip("/"))
             return
 
@@ -116,6 +116,13 @@ class MediaServer(BaseHTTPRequestHandler):
             return
 
         self.send_error(404, "Not found")
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
 
     def handle_upload(self):
         content_type = self.headers.get("Content-Type", "")
@@ -235,6 +242,7 @@ class MediaServer(BaseHTTPRequestHandler):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -245,7 +253,7 @@ class MediaServer(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     host = "0.0.0.0"
-    port = 8000
+    port = int(os.environ.get("PORT", "8000"))
     server = ThreadingHTTPServer((host, port), MediaServer)
     print(f"Serving HTTP on {host} port {port}")
     server.serve_forever()

@@ -78,6 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const logoUploadInput = document.getElementById('logo-upload');
   const mediaUploadInput = document.getElementById('media-upload-input');
   const mediaPreviewList = document.getElementById('media-preview-list');
+  const configuredMediaApiBase = String(window.MEDIA_API_BASE || '').replace(/\/$/, '');
+  const isLocalServer = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+
+  function getMediaUploadUrl() {
+    if (configuredMediaApiBase) return `${configuredMediaApiBase}/api/upload-media`;
+    if (isLocalServer) return '/api/upload-media';
+    throw new Error('Media backend is not configured for this deployed site.');
+  }
 
   function renderMediaPreviewList() {
     mediaPreviewList.innerHTML = '';
@@ -366,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       showStatus('Uploading media gallery...');
-      const response = await fetch('/api/upload-media', {
+      const response = await fetch(getMediaUploadUrl(), {
         method: 'POST',
         body: formData,
       });
@@ -391,10 +399,15 @@ document.addEventListener('DOMContentLoaded', () => {
         p.classList.toggle('active', p.id === 'tab-media');
       });
       renderQR();
-      showStatus('Photo uploaded successfully');
+      const photoCount = files.filter((file) => file.type.startsWith('image/')).length;
+      const videoCount = files.filter((file) => file.type.startsWith('video/')).length;
+      const mediaLabel = photoCount && videoCount ? 'Media' : photoCount ? 'Photo' : 'Video';
+      showStatus(`${mediaLabel}${files.length > 1 ? 's' : ''} uploaded successfully`);
     } catch (error) {
       console.error(error);
-      showStatus('Media upload failed');
+      showStatus(error.message === 'Media backend is not configured for this deployed site.'
+        ? 'Configure the media backend URL first'
+        : 'Media upload failed');
     } finally {
       mediaUploadInput.value = '';
     }
