@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
     activeLogoPreset: 'link', // 'link', 'heart', 'sparkles', 'none', 'custom'
     logoScale: 0.20,
     customLogoDataUrl: null,
+    mediaFiles: [],
+    mediaGalleryUrl: '',
   };
 
   // PRESET DATA
@@ -74,6 +76,60 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Custom logo uploader
   const logoUploadInput = document.getElementById('logo-upload');
+  const mediaUploadInput = document.getElementById('media-upload-input');
+  const mediaPreviewList = document.getElementById('media-preview-list');
+
+  function renderMediaPreviewList() {
+    mediaPreviewList.innerHTML = '';
+
+    if (!state.mediaFiles.length) {
+      const emptyState = document.createElement('div');
+      emptyState.className = 'media-empty';
+      emptyState.textContent = 'No photos or videos added yet.';
+      mediaPreviewList.appendChild(emptyState);
+      return;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'media-file-list';
+
+    state.mediaFiles.forEach((file, index) => {
+      const item = document.createElement('li');
+      item.className = 'media-file-item';
+
+      const name = document.createElement('span');
+      name.textContent = `${file.kind === 'video' ? 'Video' : 'Photo'}: ${file.name}`;
+      item.appendChild(name);
+
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'media-remove';
+      removeButton.innerHTML = '&times;';
+      removeButton.setAttribute('aria-label', `Remove ${file.name}`);
+      removeButton.addEventListener('click', () => {
+        state.mediaFiles.splice(index, 1);
+        renderMediaPreviewList();
+        renderQR();
+      });
+
+      item.appendChild(removeButton);
+      list.appendChild(item);
+    });
+
+    mediaPreviewList.appendChild(list);
+  }
+
+  function generateMediaQrPayload() {
+    if (!state.mediaFiles.length) {
+      return 'MEDIA:EMPTY';
+    }
+
+    if (!state.mediaGalleryUrl) {
+      return 'MEDIA:UPLOAD_PENDING';
+    }
+
+    return state.mediaGalleryUrl;
+  }
 
   // RENDER DYNAMIC UI CONTROLS
   // 1. Preset Gradient Grid
@@ -298,6 +354,54 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsDataURL(file);
   });
 
+  mediaUploadInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files || []).filter((file) =>
+      file.type.startsWith('image/') || file.type.startsWith('video/')
+    );
+
+    if (!files.length) return;
+
+    const formData = new FormData();
+    files.forEach((file) => formData.append('mediaFiles', file));
+
+    try {
+      showStatus('Uploading media gallery...');
+      const response = await fetch('/api/upload-media', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      state.mediaFiles = files.map((file) => ({
+        name: file.name,
+        kind: file.type.startsWith('video/') ? 'video' : 'image',
+        src: URL.createObjectURL(file),
+      }));
+      state.mediaGalleryUrl = data.url;
+      renderMediaPreviewList();
+      state.activeTab = 'media';
+      document.querySelectorAll('.tab-btn').forEach((b) => {
+        b.classList.toggle('active', b.getAttribute('data-tab') === 'media');
+      });
+      document.querySelectorAll('.tab-pane').forEach((p) => {
+        p.classList.toggle('active', p.id === 'tab-media');
+      });
+      renderQR();
+      showStatus('Photo uploaded successfully');
+    } catch (error) {
+      console.error(error);
+      showStatus('Media upload failed');
+    } finally {
+      mediaUploadInput.value = '';
+    }
+  });
+
+  renderMediaPreviewList();
+
   // Live input changes triggers
   const inputsToWatch = [
     qrUrlInput, qrTextInput, wifiSSIDInput, wifiPasswordInput, wifiEncryptionInput,
@@ -347,6 +451,8 @@ document.addEventListener('DOMContentLoaded', () => {
           case 'Linktree': return `https://linktr.ee/${handle}`;
           default: return `https://example.com/${handle}`;
         }
+      case 'media':
+        return generateMediaQrPayload();
       default:
         return 'https://example.com';
     }

@@ -44,6 +44,9 @@
               <button class="tab-btn" data-tab="profile">
                 <i data-lucide="user"></i> Profile
               </button>
+              <button class="tab-btn" data-tab="media">
+                <i data-lucide="images"></i> Media
+              </button>
             </div>
 
             <div class="tabs-content">
@@ -109,6 +112,21 @@
                     <option value="Instagram">Instagram</option>
                     <option value="Linktree">Linktree</option>
                   </select>
+                </div>
+              </div>
+
+              <!-- Media Input Tab -->
+              <div class="tab-pane" id="tab-media">
+                <div class="media-upload-box">
+                  <label for="media-upload-input" class="media-upload-label">
+                    <i data-lucide="images"></i>
+                    <span>Add multiple photos or videos</span>
+                  </label>
+                  <input type="file" id="media-upload-input" accept="image/*,video/*" multiple>
+                </div>
+
+                <div class="media-preview-list" id="media-preview-list">
+                  <div class="media-empty">No photos or videos added yet.</div>
                 </div>
               </div>
             </div>
