@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Media Gallery</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0b0c10, #1f2235);
+      color: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .gallery-shell {
+      width: min(1100px, 100%);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      margin: 0 0 20px;
+      text-align: center;
+      font-size: clamp(1.8rem, 3vw, 2.8rem);
+    }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+    }
+    .media-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .media-card img,
+    .media-card video {
+      width: 100%;
+      display: block;
+      max-height: 320px;
+      object-fit: cover;
+      background: #000;
+    }
+    .media-card .label {
+      padding: 12px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #dbeafe;
+    }
+    .empty {
+      text-align: center;
+      color: #cbd5e1;
+      font-size: 1rem;
+      padding: 28px 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="gallery-shell">
+    <h1>Shared Media Gallery</h1>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </div>
+
+  <script>
+    const path = window.location.pathname;
+    const match = path.match(/\/gallery\/(.+)$/);
+    const galleryId = match ? match[1] : null;
+
+    async function loadGallery() {
+      const galleryGrid = document.getElementById('gallery-grid');
+      if (!galleryId) {
+        galleryGrid.innerHTML = '<div class="empty">Gallery not found.</div>';
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/gallery/${galleryId}`);
+        const data = await response.json();
+        if (!response.ok || !data.files || !data.files.length) {
+          galleryGrid.innerHTML = '<div class="empty">No media found in this gallery.</div>';
+          return;
+        }
+
+        galleryGrid.innerHTML = '';
+        data.files.forEach(file => {
+          const item = document.createElement('div');
+          item.className = 'media-card';
+
+          if (file.type === 'video') {
+            const video = document.createElement('video');
+            video.src = file.path;
+            video.controls = true;
+            video.muted = true;
+            video.preload = 'metadata';
+            item.appendChild(video);
+          } else {
+            const img = document.createElement('img');
+            img.src = file.path;
+            img.alt = file.name;
+            item.appendChild(img);
+          }
+
+          const label = document.createElement('div');
+          label.className = 'label';
+          label.textContent = file.name;
+          item.appendChild(label);
+          galleryGrid.appendChild(item);
+        });
+      } catch (error) {
+        galleryGrid.innerHTML = '<div class="empty">Unable to load gallery.</div>';
+      }
+    }
+
+    loadGallery();
+  </script>
+</body>
+</html>
