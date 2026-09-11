@@ -179,7 +179,14 @@ class MediaServer(BaseHTTPRequestHandler):
             return
 
         host = self.headers.get("Host", "localhost:8000")
-        gallery_url = f"http://{host}/gallery/{gallery_id}"
+        forwarded_host = self.headers.get("X-Forwarded-Host") or host
+        forwarded_proto = (
+            self.headers.get("X-Forwarded-Proto")
+            or self.headers.get("X-Forwarded-Protocol")
+            or self.headers.get("X-Forwarded-Scheme")
+        )
+        scheme = "https" if forwarded_proto and forwarded_proto.lower().startswith("https") else "http"
+        gallery_url = f"{scheme}://{forwarded_host}/gallery/{gallery_id}"
         response = {"galleryId": gallery_id, "url": gallery_url, "files": saved_files}
         self.send_json(response, 200)
 

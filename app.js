@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     qrFgColor: '#000000',
     qrBgColor: '#ffffff',
     qrColorMode: 'solid', // 'solid', 'grad'
-    footerText: 'USERNAME',
+    footerText: '@USERNAME',
     showLogoOverlay: true,
     activeLogoPreset: 'link', // 'link', 'heart', 'sparkles', 'none', 'custom'
     logoScale: 0.20,
@@ -312,6 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Card Branding Label
   const cardUsernameInput = document.getElementById('card-username');
+  usernameText.innerText = state.footerText;
+  cardUsernameInput.value = state.footerText;
   cardUsernameInput.addEventListener('input', (e) => {
     state.footerText = e.target.value.trim() || '@USERNAME';
     usernameText.innerText = state.footerText;
@@ -665,10 +667,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    // Draw three corner finders
+    // Draw three corner finders in the correct QR positions
     drawEye(0, 0); // Top Left
-    drawEye(moduleCount - 7, 0); // Bottom Left
-    drawEye(0, moduleCount - 7); // Top Right
+    drawEye(moduleCount - 7, 0); // Top Right
+    drawEye(0, moduleCount - 7); // Bottom Left
 
     // 4. Center Logo Masking & Rendering
     if (state.activeLogoPreset !== 'none' && state.showLogoOverlay) {
