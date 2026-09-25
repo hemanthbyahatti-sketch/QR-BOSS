@@ -3,12 +3,15 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import uuid
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_ROOT = os.path.join(BASE_DIR, "uploads")
+DB_PATH = os.path.join(BASE_DIR, "qr_database.sqlite3")
 os.makedirs(UPLOAD_ROOT, exist_ok=True)
 
 
@@ -16,6 +19,84 @@ def safe_name(name: str) -> str:
     name = os.path.basename(name)
     name = re.sub(r"[^A-Za-z0-9._-]+", "_", name)
     return name or "media"
+
+
+def get_db_connection(db_path=DB_PATH):
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def initialize_database(db_path=DB_PATH):
+    conn = get_db_connection(db_path)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS qr_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            qr_type TEXT NOT NULL,
+            content TEXT NOT NULL,
+            theme TEXT,
+            metadata TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+    return db_path
+
+
+def save_qr_record(db_path, payload):
+    if not isinstance(payload, dict):
+        raise ValueError("QR record payload must be a dictionary")
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    data = {
+        "title": str(payload.get("title") or "Untitled QR"),
+        "qr_type": str(payload.get("type") or payload.get("qr_type") or "url"),
+        "content": str(payload.get("content") or ""),
+        "theme": str(payload.get("theme") or "gradient"),
+        "metadata": json.dumps(payload.get("metadata") or {}, ensure_ascii=False),
+        "created_at": str(payload.get("created_at") or now),
+        "updated_at": now,
+    }
+
+    conn = get_db_connection(db_path)
+    cursor = conn.execute(
+        """
+        INSERT INTO qr_records (title, qr_type, content, theme, metadata, created_at, updated_at)
+        VALUES (:title, :qr_type, :content, :theme, :metadata, :created_at, :updated_at)
+        """,
+        data,
+    )
+    conn.commit()
+    record_id = cursor.lastrowid
+    conn.close()
+    return record_id
+
+
+def get_recent_qr_records(db_path=DB_PATH, limit=10):
+    conn = get_db_connection(db_path)
+    rows = conn.execute(
+        "SELECT id, title, qr_type, content, theme, metadata, created_at, updated_at FROM qr_records ORDER BY id DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "type": row["qr_type"],
+            "content": row["content"],
+            "theme": row["theme"],
+            "metadata": json.loads(row["metadata"] or "{}"),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+        for row in rows
+    ]
 
 
 def parse_multipart_form(raw_body: bytes, content_type: str):
@@ -66,6 +147,9 @@ def parse_multipart_form(raw_body: bytes, content_type: str):
     return uploaded
 
 
+initialize_database(DB_PATH)
+
+
 class MediaServer(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -92,6 +176,15 @@ class MediaServer(BaseHTTPRequestHandler):
             self.serve_file(path.lstrip("/"))
             return
 
+        if path == "/api/qr":
+            self.send_recent_qr_records()
+            return
+
+        if path.startswith("/api/qr/"):
+            qr_id = path.split("/api/qr/", 1)[1].strip("/")
+            self.send_qr_record(qr_id)
+            return
+
         if path.startswith("/api/gallery/"):
             gallery_id = path.split("/api/gallery/", 1)[1].strip("/")
             self.send_gallery_json(gallery_id)
@@ -115,6 +208,10 @@ class MediaServer(BaseHTTPRequestHandler):
             self.handle_upload()
             return
 
+        if path == "/api/qr":
+            self.handle_qr_save()
+            return
+
         self.send_error(404, "Not found")
 
     def do_OPTIONS(self):
@@ -123,6 +220,59 @@ class MediaServer(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Content-Length, X-Requested-With")
         self.end_headers()
+
+    def handle_qr_save(self):
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        if length <= 0:
+            self.send_json({"error": "Missing request body"}, 400)
+            return
+
+        try:
+            raw_body = self.rfile.read(length)
+            payload = json.loads(raw_body.decode("utf-8"))
+        except Exception:
+            self.send_json({"error": "Invalid JSON payload"}, 400)
+            return
+
+        if not isinstance(payload, dict):
+            self.send_json({"error": "JSON payload must be an object"}, 400)
+            return
+
+        record_id = save_qr_record(DB_PATH, payload)
+        self.send_json({"id": record_id, "message": "QR saved successfully"}, 201)
+
+    def send_recent_qr_records(self):
+        records = get_recent_qr_records(DB_PATH, limit=20)
+        self.send_json({"records": records}, 200)
+
+    def send_qr_record(self, qr_id):
+        try:
+            record_id = int(qr_id)
+        except ValueError:
+            self.send_json({"error": "Invalid QR id"}, 400)
+            return
+
+        conn = get_db_connection(DB_PATH)
+        row = conn.execute(
+            "SELECT id, title, qr_type, content, theme, metadata, created_at, updated_at FROM qr_records WHERE id = ?",
+            (record_id,),
+        ).fetchone()
+        conn.close()
+        if row is None:
+            self.send_json({"error": "QR not found"}, 404)
+            return
+
+        record = {
+            "id": row["id"],
+            "title": row["title"],
+            "type": row["qr_type"],
+            "content": row["content"],
+            "theme": row["theme"],
+            "metadata": json.loads(row["metadata"] or "{}"),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+        self.send_json(record, 200)
 
     def handle_upload(self):
         content_type = self.headers.get("Content-Type", "")

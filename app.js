@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const footerLogoIcon = document.getElementById('footer-logo-icon');
   const usernameText = document.getElementById('username-text');
   const exportStatus = document.getElementById('export-status');
+  const savedQrList = document.getElementById('saved-qr-list');
 
   // Input bindings
   const qrUrlInput = document.getElementById('qr-url');
@@ -431,6 +432,84 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-download-card').addEventListener('click', downloadCard);
   document.getElementById('btn-copy-card').addEventListener('click', copyCardToClipboard);
   document.getElementById('btn-download-qr').addEventListener('click', downloadQRImageOnly);
+  document.getElementById('btn-save-qr').addEventListener('click', saveCurrentQrToDatabase);
+
+  function renderSavedQrList(records = []) {
+    savedQrList.innerHTML = '';
+
+    if (!records.length) {
+      const emptyItem = document.createElement('li');
+      emptyItem.className = 'saved-qr-empty';
+      emptyItem.textContent = 'No saved QR codes yet.';
+      savedQrList.appendChild(emptyItem);
+      return;
+    }
+
+    records.forEach((record) => {
+      const item = document.createElement('li');
+      item.className = 'saved-qr-item';
+      item.innerHTML = `
+        <strong>${(record.title || 'Untitled QR').replace(/</g, '&lt;')}</strong>
+        <span>${(record.type || 'url').toUpperCase()}</span>
+      `;
+      item.title = record.content || '';
+      item.addEventListener('click', () => {
+        if (record.content) {
+          navigator.clipboard?.writeText(record.content).catch(() => {});
+          showStatus(`Saved QR copied: ${record.title || 'Untitled QR'}`);
+        }
+      });
+      savedQrList.appendChild(item);
+    });
+  }
+
+  async function loadSavedQrRecords() {
+    try {
+      const response = await fetch('/api/qr');
+      const data = await response.json();
+      renderSavedQrList(Array.isArray(data.records) ? data.records : []);
+    } catch (error) {
+      console.error('Could not load saved QR records:', error);
+      renderSavedQrList([]);
+    }
+  }
+
+  async function saveCurrentQrToDatabase() {
+    const payload = {
+      title: profileNameInput.value.trim() || `QR ${state.activeTab.toUpperCase()}`,
+      type: state.activeTab,
+      content: getQRDataContent(),
+      theme: state.bgMode,
+      metadata: {
+        qrStyle: state.qrStyle,
+        qrEyeStyle: state.qrEyeStyle,
+        qrColorMode: state.qrColorMode,
+        footerText: state.footerText,
+      },
+    };
+
+    try {
+      showStatus('Saving QR record...');
+      const response = await fetch('/api/qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save QR');
+      }
+
+      showStatus('QR saved to database');
+      await loadSavedQrRecords();
+    } catch (error) {
+      console.error(error);
+      showStatus('Database save failed');
+    }
+  }
 
   // FUNCTIONS
 
@@ -815,4 +894,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // APP INITIALIZATION RUNS
   updateBackground();
   renderQR();
+  loadSavedQrRecords();
 });
