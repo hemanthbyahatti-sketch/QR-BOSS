@@ -79,16 +79,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const logoUploadInput = document.getElementById('logo-upload');
   const mediaUploadInput = document.getElementById('media-upload-input');
   const mediaPreviewList = document.getElementById('media-preview-list');
-  const rawBase = window.MEDIA_API_BASE || (window.location && window.location.origin && window.location.origin.startsWith('http') ? window.location.origin : '');
+  const rawBase = (typeof window !== 'undefined' && window.MEDIA_API_BASE) || '';
   const configuredMediaApiBase = (rawBase && rawBase !== 'null') ? String(rawBase).replace(/\/$/, '') : '';
   const isLocalServer = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  const isGitHubPages = typeof window !== 'undefined' && window.location && window.location.hostname && window.location.hostname.endsWith('github.io');
 
   function getApiEndpoint(endpoint) {
     const clean = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    if (configuredMediaApiBase) return `${configuredMediaApiBase}${clean}`;
-    if (isLocalServer) return clean;
-    if (window.location && window.location.protocol && window.location.protocol.startsWith('http')) {
+    if (configuredMediaApiBase && !configuredMediaApiBase.includes('github.io')) {
+      return `${configuredMediaApiBase}${clean}`;
+    }
+    if (isLocalServer && window.location.port === '8000') {
       return clean;
+    }
+    if (isGitHubPages) {
+      throw new Error('GITHUB_PAGES_NO_BACKEND');
     }
     return `http://localhost:8000${clean}`;
   }
@@ -392,9 +397,19 @@ document.addEventListener('DOMContentLoaded', () => {
         body: formData,
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data = {};
+      try {
+        data = JSON.parse(responseText);
+      } catch (err) {
+        if (response.status === 405 || response.status === 404) {
+          throw new Error('BACKEND_NOT_FOUND');
+        }
+        throw new Error(`Upload server error (${response.status})`);
+      }
+
       if (!response.ok || !data.url) {
-        throw new Error(data.error || 'Upload failed');
+        throw new Error(data.error || `Upload failed (${response.status})`);
       }
 
       state.mediaFiles = files.map((file) => ({
@@ -415,12 +430,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const photoCount = files.filter((file) => file.type.startsWith('image/')).length;
       const videoCount = files.filter((file) => file.type.startsWith('video/')).length;
       const mediaLabel = photoCount && videoCount ? 'Media' : photoCount ? 'Photo' : 'Video';
-      showStatus(`${mediaLabel}${files.length > 1 ? 's' : ''} uploaded successfully`);
+      showStatus(`${mediaLabel}${files.length > 1 ? 's' : ''} uploaded successfully!`);
     } catch (error) {
-      console.error(error);
-      showStatus(error.message === 'Media backend is not configured for this deployed site.'
-        ? 'Configure the media backend URL first'
-        : 'Media upload failed');
+      console.error('Media upload error:', error);
+      if (error.message === 'GITHUB_PAGES_NO_BACKEND' || error.message === 'BACKEND_NOT_FOUND') {
+        showStatus('Media uploads need Python server.py (see README)', 5000);
+      } else if (error.name === 'TypeError' || error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        showStatus('Server offline! Run: python server.py', 5000);
+      } else {
+        showStatus(error.message || 'Media upload failed', 4000);
+      }
     } finally {
       mediaUploadInput.value = '';
     }

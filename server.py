@@ -140,13 +140,16 @@ def parse_multipart_form(raw_body: bytes, content_type: str):
             headers[name.decode("utf-8", "replace").lower()] = value.decode("utf-8", "replace").strip()
 
         disposition = headers.get("content-disposition", "")
-        filename_match = re.search(r'filename="([^"]*)"', disposition)
-        name_match = re.search(r'name="([^"]*)"', disposition)
+        filename_match = re.search(r'filename\*?=(?:"([^"]*)"|([^;\r\n]+))', disposition)
+        name_match = re.search(r'name=(?:"([^"]*)"|([^;\r\n]+))', disposition)
         if not filename_match:
             continue
 
-        filename = filename_match.group(1)
-        field_name = name_match.group(1) if name_match else "mediaFiles"
+        raw_filename = filename_match.group(1) or filename_match.group(2) or "media"
+        if "''" in raw_filename:
+            raw_filename = raw_filename.split("''", 1)[-1]
+        filename = raw_filename.strip().strip("'\"")
+        field_name = (name_match.group(1) or name_match.group(2) or "mediaFiles").strip().strip("'\"") if name_match else "mediaFiles"
         file_bytes = file_data
         if file_bytes.endswith(b"\r\n"):
             file_bytes = file_bytes[:-2]
@@ -333,9 +336,13 @@ class MediaServer(BaseHTTPRequestHandler):
             with open(target_path, "wb") as target_file:
                 target_file.write(file_data)
 
+            file_ext = os.path.splitext(target_path)[1].lower()
+            is_video = field_data["content_type"].startswith("video/") or file_ext in (
+                ".mp4", ".mov", ".webm", ".avi", ".mkv", ".m4v"
+            )
             saved_files.append({
                 "name": os.path.basename(target_path),
-                "type": "video" if field_data["content_type"].startswith("video/") else "image",
+                "type": "video" if is_video else "image",
                 "path": "/uploads/" + gallery_id + "/" + os.path.basename(target_path),
             })
 
