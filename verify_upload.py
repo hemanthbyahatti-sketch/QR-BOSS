@@ -19,7 +19,13 @@ req = urllib.request.Request(
         'Content-Length': str(len(payload)),
     },
 )
-with urllib.request.urlopen(req, timeout=20) as resp:
-    body = resp.read().decode('utf-8', 'replace')
-    print('STATUS', resp.status)
-    print(body)
+try:
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        body = resp.read().decode('utf-8', 'replace')
+        print('STATUS', resp.status)
+        print(body)
+except urllib.error.URLError as exc:
+    print(f"Error connecting to backend: {exc}")
+    print("Please make sure server.py is running on port 8000 (e.g. 'python server.py') before running verify_upload.py.")
+    sys.exit(1)
+

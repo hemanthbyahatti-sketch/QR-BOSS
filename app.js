@@ -79,14 +79,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const logoUploadInput = document.getElementById('logo-upload');
   const mediaUploadInput = document.getElementById('media-upload-input');
   const mediaPreviewList = document.getElementById('media-preview-list');
-  const configuredMediaApiBase = String(window.MEDIA_API_BASE || window.location.origin || '').replace(/\/$/, '');
+  const rawBase = window.MEDIA_API_BASE || (window.location && window.location.origin && window.location.origin.startsWith('http') ? window.location.origin : '');
+  const configuredMediaApiBase = (rawBase && rawBase !== 'null') ? String(rawBase).replace(/\/$/, '') : '';
   const isLocalServer = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 
-  function getMediaUploadUrl() {
-    if (configuredMediaApiBase) return `${configuredMediaApiBase}/api/upload-media`;
-    if (isLocalServer) return '/api/upload-media';
-    throw new Error('Media backend is not configured for this deployed site.');
+  function getApiEndpoint(endpoint) {
+    const clean = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    if (configuredMediaApiBase) return `${configuredMediaApiBase}${clean}`;
+    if (isLocalServer) return clean;
+    if (window.location && window.location.protocol && window.location.protocol.startsWith('http')) {
+      return clean;
+    }
+    return `http://localhost:8000${clean}`;
   }
+
+  function getMediaUploadUrl() {
+    return getApiEndpoint('/api/upload-media');
+  }
+
 
   function renderMediaPreviewList() {
     mediaPreviewList.innerHTML = '';
@@ -465,11 +475,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadSavedQrRecords() {
     try {
-      const response = await fetch('/api/qr');
+      const response = await fetch(getApiEndpoint('/api/qr'));
       const data = await response.json();
       renderSavedQrList(Array.isArray(data.records) ? data.records : []);
     } catch (error) {
-      console.error('Could not load saved QR records:', error);
+      console.warn('Could not load saved QR records:', error);
       renderSavedQrList([]);
     }
   }
@@ -490,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       showStatus('Saving QR record...');
-      const response = await fetch('/api/qr', {
+      const response = await fetch(getApiEndpoint('/api/qr'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

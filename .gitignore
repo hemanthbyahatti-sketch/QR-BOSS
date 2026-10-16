@@ -1,0 +1,26 @@
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Next.js / Node
+studio-footer/node_modules/
+studio-footer/.next/
+studio-footer/tsconfig.tsbuildinfo
+
+# Generated images and uploads
+generated_qr.png
+sample_*.png
+uploads/*
+!uploads/.gitkeep
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store

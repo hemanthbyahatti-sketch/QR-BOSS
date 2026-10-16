@@ -22,7 +22,7 @@ def safe_name(name: str) -> str:
 
 
 def get_db_connection(db_path=DB_PATH):
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=30.0)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -53,12 +53,23 @@ def save_qr_record(db_path, payload):
         raise ValueError("QR record payload must be a dictionary")
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    raw_meta = payload.get("metadata")
+    if isinstance(raw_meta, str):
+        try:
+            meta_obj = json.loads(raw_meta)
+        except Exception:
+            meta_obj = {}
+    elif isinstance(raw_meta, dict):
+        meta_obj = raw_meta
+    else:
+        meta_obj = {}
+
     data = {
         "title": str(payload.get("title") or "Untitled QR"),
         "qr_type": str(payload.get("type") or payload.get("qr_type") or "url"),
         "content": str(payload.get("content") or ""),
         "theme": str(payload.get("theme") or "gradient"),
-        "metadata": json.dumps(payload.get("metadata") or {}, ensure_ascii=False),
+        "metadata": json.dumps(meta_obj, ensure_ascii=False),
         "created_at": str(payload.get("created_at") or now),
         "updated_at": now,
     }
@@ -100,7 +111,9 @@ def get_recent_qr_records(db_path=DB_PATH, limit=10):
 
 
 def parse_multipart_form(raw_body: bytes, content_type: str):
-    boundary = content_type.split("boundary=", 1)[1].strip().strip('"')
+    if "boundary=" not in content_type:
+        raise ValueError("Missing multipart boundary")
+    boundary = content_type.split("boundary=", 1)[1].split(";")[0].strip().strip('"')
     if not boundary:
         raise ValueError("Missing multipart boundary")
 
@@ -165,8 +178,9 @@ class MediaServer(BaseHTTPRequestHandler):
 
         if path.startswith("/gallery/"):
             gallery_id = path.split("/gallery/", 1)[1].strip("/")
-            gallery_dir = os.path.join(UPLOAD_ROOT, gallery_id)
-            if os.path.isdir(gallery_dir):
+            safe_id = safe_name(gallery_id)
+            gallery_dir = os.path.abspath(os.path.join(UPLOAD_ROOT, safe_id))
+            if gallery_dir.startswith(os.path.abspath(UPLOAD_ROOT)) and os.path.isdir(gallery_dir):
                 self.serve_file("gallery.html")
                 return
             self.send_error(404, "Gallery not found")
@@ -191,8 +205,10 @@ class MediaServer(BaseHTTPRequestHandler):
             return
 
         if path.startswith("/uploads/"):
-            storage_path = os.path.normpath(os.path.join(BASE_DIR, path.lstrip("/")))
-            if os.path.isfile(storage_path):
+            rel_path = path.lstrip("/").replace("/", os.sep)
+            storage_path = os.path.abspath(os.path.join(BASE_DIR, rel_path))
+            upload_root_abs = os.path.abspath(UPLOAD_ROOT)
+            if storage_path.startswith(upload_root_abs) and os.path.isfile(storage_path):
                 self.serve_binary(storage_path)
                 return
             self.send_error(404, "File not found")
@@ -276,8 +292,8 @@ class MediaServer(BaseHTTPRequestHandler):
 
     def handle_upload(self):
         content_type = self.headers.get("Content-Type", "")
-        if "multipart/form-data" not in content_type:
-            self.send_json({"error": "Expected multipart/form-data"}, 400)
+        if "multipart/form-data" not in content_type or "boundary=" not in content_type:
+            self.send_json({"error": "Expected multipart/form-data with boundary"}, 400)
             return
 
         content_length = int(self.headers.get("Content-Length", "0") or "0")
@@ -285,7 +301,7 @@ class MediaServer(BaseHTTPRequestHandler):
             self.send_json({"error": "Missing upload body"}, 400)
             return
 
-        form_boundary = content_type.split("boundary=")[-1]
+        form_boundary = content_type.split("boundary=", 1)[1].split(";")[0].strip().strip('"')
         if not form_boundary:
             self.send_json({"error": "Missing multipart boundary"}, 400)
             return
@@ -341,8 +357,10 @@ class MediaServer(BaseHTTPRequestHandler):
         self.send_json(response, 200)
 
     def send_gallery_json(self, gallery_id):
-        gallery_dir = os.path.join(UPLOAD_ROOT, gallery_id)
-        if not os.path.isdir(gallery_dir):
+        safe_id = safe_name(gallery_id)
+        gallery_dir = os.path.abspath(os.path.join(UPLOAD_ROOT, safe_id))
+        upload_root_abs = os.path.abspath(UPLOAD_ROOT)
+        if not gallery_dir.startswith(upload_root_abs) or not os.path.isdir(gallery_dir):
             self.send_json({"error": "Gallery not found"}, 404)
             return
 
@@ -355,13 +373,14 @@ class MediaServer(BaseHTTPRequestHandler):
             files.append({
                 "name": entry,
                 "type": media_type,
-                "path": f"/uploads/{gallery_id}/{entry}",
+                "path": f"/uploads/{safe_id}/{entry}",
             })
 
-        self.send_json({"galleryId": gallery_id, "files": files}, 200)
+        self.send_json({"galleryId": safe_id, "files": files}, 200)
 
     def serve_file(self, file_name):
-        path = os.path.join(BASE_DIR, file_name)
+        safe_base = safe_name(file_name)
+        path = os.path.join(BASE_DIR, safe_base)
         if os.path.isfile(path):
             self.serve_binary(path)
             return
@@ -391,6 +410,7 @@ class MediaServer(BaseHTTPRequestHandler):
             data = file_obj.read()
         self.send_response(200)
         self.send_header("Content-Type", content_type)
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
