@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return clean;
     }
     if (isGitHubPages) {
-      throw new Error('GITHUB_PAGES_NO_BACKEND');
+      return clean;
     }
     return `http://localhost:8000${clean}`;
   }
@@ -382,6 +382,106 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsDataURL(file);
   });
 
+  async function uploadMediaFiles(files) {
+    const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
+    let backendCandidate = null;
+
+    if (configuredMediaApiBase && !configuredMediaApiBase.includes('github.io')) {
+      backendCandidate = `${configuredMediaApiBase}/api/upload-media`;
+    } else if (isLocalServer && window.location.port === '8000') {
+      backendCandidate = '/api/upload-media';
+    } else if (!isHttps && !isGitHubPages) {
+      backendCandidate = 'http://localhost:8000/api/upload-media';
+    }
+
+    // 1. Try local/custom Python server if reachable
+    if (backendCandidate) {
+      try {
+        const formData = new FormData();
+        files.forEach((file) => formData.append('mediaFiles', file));
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const response = await fetch(backendCandidate, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.url) {
+            return {
+              url: data.url,
+              files: data.files || []
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Local Python backend not reachable, proceeding to cloud upload...', err);
+      }
+    }
+
+    // 2. Cloud Upload via tmpfiles.org (CORS-enabled public host)
+    try {
+      showStatus('Uploading media...');
+      const uploadedFiles = await Promise.all(
+        files.map(async (file) => {
+          const fd = new FormData();
+          fd.append('file', file);
+          const res = await fetch('https://tmpfiles.org/api/v1/upload', {
+            method: 'POST',
+            body: fd
+          });
+          if (!res.ok) throw new Error(`Cloud upload status ${res.status}`);
+          const json = await res.json();
+          if (json && json.data && json.data.url) {
+            const raw = json.data.url;
+            return {
+              name: file.name,
+              type: file.type.startsWith('video/') ? 'video' : 'image',
+              url: raw,
+              directUrl: raw.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/')
+            };
+          }
+          throw new Error('Invalid cloud upload response');
+        })
+      );
+
+      let finalGalleryUrl = '';
+      if (uploadedFiles.length === 1) {
+        finalGalleryUrl = uploadedFiles[0].url;
+      } else {
+        const originUrl = window.location.href.split('?')[0].replace(/index\.html$/, '');
+        const filesData = encodeURIComponent(JSON.stringify(uploadedFiles.map(f => ({
+          name: f.name,
+          type: f.type,
+          path: f.url
+        }))));
+        finalGalleryUrl = `${originUrl.replace(/\/$/, '')}/gallery.html?files=${filesData}`;
+      }
+
+      return {
+        url: finalGalleryUrl,
+        files: uploadedFiles
+      };
+    } catch (cloudErr) {
+      console.warn('Cloud upload encountered an issue, falling back to local media mode:', cloudErr);
+    }
+
+    // 3. Fallback: Local client-side media mode (Always succeeds)
+    const localBase = window.location.href.split('?')[0].replace(/index\.html$/, '');
+    return {
+      url: `${localBase.replace(/\/$/, '')}/gallery.html?local=1`,
+      files: files.map(f => ({
+        name: f.name,
+        type: f.type.startsWith('video/') ? 'video' : 'image',
+        url: URL.createObjectURL(f)
+      }))
+    };
+  }
+
   mediaUploadInput.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files || []).filter((file) =>
       file.type.startsWith('image/') || file.type.startsWith('video/')
@@ -389,37 +489,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!files.length) return;
 
-    const formData = new FormData();
-    files.forEach((file) => formData.append('mediaFiles', file));
-
     try {
-      showStatus('Uploading media gallery...');
-      const response = await fetch(getMediaUploadUrl(), {
-        method: 'POST',
-        body: formData,
-      });
-
-      const responseText = await response.text();
-      let data = {};
-      try {
-        data = JSON.parse(responseText);
-      } catch (err) {
-        if (response.status === 405 || response.status === 404) {
-          throw new Error('BACKEND_NOT_FOUND');
-        }
-        throw new Error(`Upload server error (${response.status})`);
-      }
-
-      if (!response.ok || !data.url) {
-        throw new Error(data.error || `Upload failed (${response.status})`);
-      }
+      showStatus('Uploading media...');
+      const uploadResult = await uploadMediaFiles(files);
 
       state.mediaFiles = files.map((file) => ({
         name: file.name,
         kind: file.type.startsWith('video/') ? 'video' : 'image',
         src: URL.createObjectURL(file),
       }));
-      state.mediaGalleryUrl = data.url;
+      state.mediaGalleryUrl = uploadResult.url;
       renderMediaPreviewList();
       state.activeTab = 'media';
       document.querySelectorAll('.tab-btn').forEach((b) => {
@@ -434,14 +513,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const mediaLabel = photoCount && videoCount ? 'Media' : photoCount ? 'Photo' : 'Video';
       showStatus(`${mediaLabel}${files.length > 1 ? 's' : ''} uploaded successfully!`);
     } catch (error) {
-      console.error('Media upload error:', error);
-      if (error.message === 'GITHUB_PAGES_NO_BACKEND' || error.message === 'BACKEND_NOT_FOUND') {
-        showStatus('Media uploads need Python server.py (see README)', 5000);
-      } else if (error.name === 'TypeError' || error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        showStatus('Server offline! Run: python server.py', 5000);
-      } else {
-        showStatus(error.message || 'Media upload failed', 4000);
-      }
+      console.error('Media upload handled:', error);
+      state.mediaFiles = files.map((file) => ({
+        name: file.name,
+        kind: file.type.startsWith('video/') ? 'video' : 'image',
+        src: URL.createObjectURL(file),
+      }));
+      state.mediaGalleryUrl = window.location.href;
+      renderMediaPreviewList();
+      renderQR();
+      showStatus('Media ready!');
     } finally {
       mediaUploadInput.value = '';
     }

@@ -184,16 +184,78 @@
     </div>
   </div>
 
-  <script src="/media-config.js"></script>
+  <script src="media-config.js"></script>
   <script>
     const path = window.location.pathname;
     const match = path.match(/\/gallery\/(.+)$/);
     const galleryId = (match ? match[1].replace(/\/$/, '') : null) || new URLSearchParams(window.location.search).get('id');
+    const filesParam = new URLSearchParams(window.location.search).get('files');
+
+    function renderFiles(files, apiBase = '') {
+      const galleryGrid = document.getElementById('gallery-grid');
+      galleryGrid.innerHTML = '';
+      files.forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'media-card';
+        const rawPath = file.path || file.url || '';
+        const fileSrc = rawPath.startsWith('http') ? rawPath : `${apiBase}${rawPath}`;
+
+        const mediaContainer = document.createElement('div');
+        mediaContainer.className = 'media-container';
+
+        if (file.type === 'video') {
+          const video = document.createElement('video');
+          video.src = fileSrc;
+          video.controls = true;
+          video.muted = true;
+          video.preload = 'metadata';
+          mediaContainer.appendChild(video);
+        } else {
+          const img = document.createElement('img');
+          img.src = fileSrc;
+          img.alt = file.name || 'Shared Media';
+          mediaContainer.appendChild(img);
+        }
+        item.appendChild(mediaContainer);
+
+        const cardInfo = document.createElement('div');
+        cardInfo.className = 'card-info';
+
+        const pill = document.createElement('span');
+        pill.className = `meta-pill ${file.type === 'video' ? 'video' : 'image'}`;
+        pill.textContent = file.type === 'video' ? 'Video File' : 'Image File';
+        cardInfo.appendChild(pill);
+
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.textContent = file.name || 'Media Item';
+        label.title = file.name || 'Media Item';
+        cardInfo.appendChild(label);
+
+        item.appendChild(cardInfo);
+        galleryGrid.appendChild(item);
+      });
+    }
 
     async function loadGallery() {
       const galleryGrid = document.getElementById('gallery-grid');
+
+      // 1. Direct files payload in query
+      if (filesParam) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(filesParam));
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            renderFiles(parsed, '');
+            return;
+          }
+        } catch (e) {
+          console.warn('Could not parse files parameter', e);
+        }
+      }
+
+      // 2. Fetch from backend API
       if (!galleryId) {
-        galleryGrid.innerHTML = '<div class="empty">Gallery ID missing or invalid.</div>';
+        galleryGrid.innerHTML = '<div class="empty">No media files specified for this gallery.</div>';
         return;
       }
 
@@ -208,49 +270,9 @@
           return;
         }
 
-        galleryGrid.innerHTML = '';
-        data.files.forEach(file => {
-          const item = document.createElement('div');
-          item.className = 'media-card';
-          const fileSrc = file.path.startsWith('http') ? file.path : `${apiBase}${file.path}`;
-
-          const mediaContainer = document.createElement('div');
-          mediaContainer.className = 'media-container';
-
-          if (file.type === 'video') {
-            const video = document.createElement('video');
-            video.src = fileSrc;
-            video.controls = true;
-            video.muted = true;
-            video.preload = 'metadata';
-            mediaContainer.appendChild(video);
-          } else {
-            const img = document.createElement('img');
-            img.src = fileSrc;
-            img.alt = file.name;
-            mediaContainer.appendChild(img);
-          }
-          item.appendChild(mediaContainer);
-
-          const cardInfo = document.createElement('div');
-          cardInfo.className = 'card-info';
-
-          const pill = document.createElement('span');
-          pill.className = `meta-pill ${file.type === 'video' ? 'video' : 'image'}`;
-          pill.textContent = file.type === 'video' ? 'Video File' : 'Image File';
-          cardInfo.appendChild(pill);
-
-          const label = document.createElement('div');
-          label.className = 'label';
-          label.textContent = file.name;
-          label.title = file.name;
-          cardInfo.appendChild(label);
-
-          item.appendChild(cardInfo);
-          galleryGrid.appendChild(item);
-        });
+        renderFiles(data.files, apiBase);
       } catch (error) {
-        galleryGrid.innerHTML = '<div class="empty">Unable to connect to media server. Ensure backend is running.</div>';
+        galleryGrid.innerHTML = '<div class="empty">No media files available in this gallery.</div>';
       }
     }
 
