@@ -6,10 +6,10 @@ from tkinter import filedialog, messagebox, colorchooser
 
 DEFAULT_PALETTES = {
     "Sunset": ("#ff5f6d", "#ffc371"),
-    "Ocean": ("#34ace0", "#33d9b2"),
-    "Lavender": ("#7d5fff", "#ffffff"),
-    "Forest": ("#2b8e77", "#a8e6cf"),
-    "Candy": ("#ff6b81", "#f7d794"),
+    "Ocean": ("#00f59b", "#00d2ff"),
+    "Neon Pink": ("#ff0055", "#ffd000"),
+    "Violet Flame": ("#9d4edd", "#ff007f"),
+    "Solar Pop": ("#ff7700", "#ff0055"),
 }
 STYLE_OPTIONS = ["Classic", "Rounded", "Gradient", "Two-tone"]
 
@@ -133,57 +133,57 @@ def main():
     root.title("Stylish QR Code Generator")
     root.geometry("760x600")
     root.resizable(False, False)
-    root.configure(bg="#1f1f2e")
+    root.configure(bg="#0c0d12")
 
-    title_label = tk.Label(root, text="Stylish QR Code Generator", font=("Segoe UI", 22, "bold"), fg="#f7f1ff", bg="#1f1f2e")
+    title_label = tk.Label(root, text="Stylish QR Code Generator", font=("Segoe UI", 22, "bold"), fg="#ff0055", bg="#0c0d12")
     title_label.pack(pady=(16, 8))
 
-    frame = tk.Frame(root, bg="#27293d", padx=16, pady=16)
+    frame = tk.Frame(root, bg="#141622", padx=18, pady=18, highlightbackground="#ff0055", highlightthickness=1)
     frame.pack(fill=tk.BOTH, expand=True, padx=16, pady=8)
 
-    text_label = tk.Label(frame, text="Text or URL:", fg="#e3e3ff", bg="#27293d", font=("Segoe UI", 11))
+    text_label = tk.Label(frame, text="Text or URL:", fg="#f8fafc", bg="#141622", font=("Segoe UI", 11, "bold"))
     text_label.grid(row=0, column=0, sticky="w")
-    text_input = tk.Text(frame, width=48, height=6, bg="#1d1f30", fg="#f0f0ff", insertbackground="#ffffff", wrap=tk.WORD)
+    text_input = tk.Text(frame, width=48, height=6, bg="#1a1c28", fg="#f8fafc", insertbackground="#ff0055", wrap=tk.WORD, font=("Segoe UI", 10))
     text_input.grid(row=1, column=0, columnspan=2, pady=(4, 10), sticky="nsew")
     text_input.insert(tk.END, "https://example.com")
 
-    palette_label = tk.Label(frame, text="Palette:", fg="#e3e3ff", bg="#27293d", font=("Segoe UI", 11))
+    palette_label = tk.Label(frame, text="Palette:", fg="#f8fafc", bg="#141622", font=("Segoe UI", 11, "bold"))
     palette_label.grid(row=2, column=0, sticky="w")
     palette_var = tk.StringVar(value="Sunset")
     palette_menu = tk.OptionMenu(frame, palette_var, *DEFAULT_PALETTES.keys(), command=pick_palette)
-    palette_menu.config(bg="#3b3f5a", fg="#ffffff", highlightthickness=0, activebackground="#50567a")
-    palette_menu["menu"].config(bg="#3b3f5a", fg="#ffffff")
+    palette_menu.config(bg="#222638", fg="#ffffff", highlightthickness=0, activebackground="#ff0055", activeforeground="#ffffff")
+    palette_menu["menu"].config(bg="#222638", fg="#ffffff")
     palette_menu.grid(row=2, column=1, sticky="w", pady=(4, 10))
 
     fg_color_var = tk.StringVar(value=DEFAULT_PALETTES["Sunset"][0])
     bg_color_var = tk.StringVar(value=DEFAULT_PALETTES["Sunset"][1])
 
-    fg_button = tk.Button(frame, text="Foreground", command=lambda: pick_color(fg_color_var, fg_button, "Choose foreground color"), bg=fg_color_var.get(), fg="#ffffff", width=14)
+    fg_button = tk.Button(frame, text="Foreground", command=lambda: pick_color(fg_color_var, fg_button, "Choose foreground color"), bg=fg_color_var.get(), fg="#ffffff", font=("Segoe UI", 9, "bold"), width=14, relief="flat")
     fg_button.grid(row=3, column=0, sticky="w", pady=(0, 10))
 
-    bg_button = tk.Button(frame, text="Background", command=lambda: pick_color(bg_color_var, bg_button, "Choose background color"), bg=bg_color_var.get(), fg="#ffffff", width=14)
+    bg_button = tk.Button(frame, text="Background", command=lambda: pick_color(bg_color_var, bg_button, "Choose background color"), bg=bg_color_var.get(), fg="#ffffff", font=("Segoe UI", 9, "bold"), width=14, relief="flat")
     bg_button.grid(row=3, column=1, sticky="w", pady=(0, 10))
 
-    style_label = tk.Label(frame, text="Style:", fg="#e3e3ff", bg="#27293d", font=("Segoe UI", 11))
+    style_label = tk.Label(frame, text="Style:", fg="#f8fafc", bg="#141622", font=("Segoe UI", 11, "bold"))
     style_label.grid(row=4, column=0, sticky="w")
     style_var = tk.StringVar(value=STYLE_OPTIONS[0])
     style_menu = tk.OptionMenu(frame, style_var, *STYLE_OPTIONS)
-    style_menu.config(bg="#3b3f5a", fg="#ffffff", highlightthickness=0, activebackground="#50567a")
-    style_menu["menu"].config(bg="#3b3f5a", fg="#ffffff")
+    style_menu.config(bg="#222638", fg="#ffffff", highlightthickness=0, activebackground="#ff0055", activeforeground="#ffffff")
+    style_menu["menu"].config(bg="#222638", fg="#ffffff")
     style_menu.grid(row=4, column=1, sticky="w", pady=(4, 10))
 
-    button_frame = tk.Frame(frame, bg="#27293d")
+    button_frame = tk.Frame(frame, bg="#141622")
     button_frame.grid(row=5, column=0, columnspan=2, pady=(10, 0), sticky="w")
 
-    save_button = tk.Button(button_frame, text="Save QR Code", command=generate_qr, bg="#6a67ce", fg="#ffffff", padx=16, pady=8)
+    save_button = tk.Button(button_frame, text="Save QR Code", command=generate_qr, bg="#ff0055", fg="#ffffff", font=("Segoe UI", 10, "bold"), padx=16, pady=8, relief="flat", cursor="hand2")
     save_button.pack(side=tk.LEFT, padx=(0, 12))
 
-    palette_button = tk.Button(button_frame, text="Next Palette", command=random_palette, bg="#34c759", fg="#ffffff", padx=12, pady=8)
+    palette_button = tk.Button(button_frame, text="Next Palette", command=random_palette, bg="#ff7700", fg="#ffffff", font=("Segoe UI", 10, "bold"), padx=12, pady=8, relief="flat", cursor="hand2")
     palette_button.pack(side=tk.LEFT)
 
-    preview_title = tk.Label(frame, text="Preview:", fg="#e3e3ff", bg="#27293d", font=("Segoe UI", 11))
+    preview_title = tk.Label(frame, text="Preview:", fg="#f8fafc", bg="#141622", font=("Segoe UI", 11, "bold"))
     preview_title.grid(row=6, column=0, sticky="w", pady=(16, 4))
-    preview_label = tk.Label(frame, bg="#27293d")
+    preview_label = tk.Label(frame, bg="#141622")
     preview_label.grid(row=7, column=0, columnspan=2, pady=(0, 8))
 
     frame.grid_columnconfigure(0, weight=1)
@@ -196,4 +196,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

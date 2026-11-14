@@ -103,6 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
+
+
   function renderMediaPreviewList() {
     mediaPreviewList.innerHTML = '';
 
@@ -461,9 +463,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-download-card').addEventListener('click', downloadCard);
   document.getElementById('btn-copy-card').addEventListener('click', copyCardToClipboard);
   document.getElementById('btn-download-qr').addEventListener('click', downloadQRImageOnly);
-  document.getElementById('btn-save-qr').addEventListener('click', saveCurrentQrToDatabase);
+  const btnSaveQr = document.getElementById('btn-save-qr');
+  if (btnSaveQr) {
+    btnSaveQr.addEventListener('click', saveCurrentQrToDatabase);
+  }
 
   function renderSavedQrList(records = []) {
+    if (!savedQrList) return;
     savedQrList.innerHTML = '';
 
     if (!records.length) {
@@ -493,6 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadSavedQrRecords() {
+    if (!savedQrList) return;
     try {
       const response = await fetch(getApiEndpoint('/api/qr'));
       const data = await response.json();

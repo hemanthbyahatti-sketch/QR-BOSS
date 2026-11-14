@@ -1,6 +1,6 @@
-# Stylish QR Code Generator
+# Stylish QR Code Generator & Studio
 
-A colorful Python QR code generator with a simple GUI. Create attractive, styled QR code images using different palettes and visual themes.
+A colorful, high-energy Python and web QR code generator with live media galleries and database persistence.
 
 ## Setup
 
@@ -10,39 +10,50 @@ A colorful Python QR code generator with a simple GUI. Create attractive, styled
 pip install -r requirements.txt
 ```
 
-2. Run the application:
+2. Run the desktop GUI:
 
 ```bash
 python qr_generator.py
 ```
 
-3. Or open `index.html` in your browser for the modern web-based QR Studio experience.
+3. Or run the modern web QR Studio with the backend server.
 
-## Media uploads
+---
 
-Media uploads require the Python server because GitHub Pages cannot run Python or store uploaded files. Run the backend locally with:
+## Running the Backend Server (Continuous)
 
+The Python backend provides media uploads, shared galleries, and database persistence. It can run continuously in the background until explicitly turned off:
+
+- **Start continuous server**: Double-click `start_server.bat` (or run `.\start_server.ps1`). It launches the server in the background and opens the web app at `http://localhost:8000`.
+- **Check server status**: Run `server_status.bat` to see whether the server is active, its port, PID, and uptime.
+- **Stop server**: Run `stop_server.bat` (or `.\stop_server.ps1`) when you want to shut it down.
+
+Alternatively, run in the foreground:
 ```bash
 python server.py
 ```
 
-For a GitHub Pages deployment, deploy `server.py` to a public Python host first. The included `render.yaml` can be used with Render. Then put the backend's public URL in `media-config.js`:
+---
+
+## Media Uploads & Galleries
+
+Media uploads require the Python server (`server.py`) because static hosting environments like GitHub Pages cannot run Python or store uploaded media.
+
+When running locally with `start_server.bat` or `python server.py`, media uploads work automatically.
+
+For a GitHub Pages deployment, deploy `server.py` to a public Python host (such as Render using `render.yaml`). Then configure the public backend URL in `media-config.js`:
 
 ```js
 window.MEDIA_API_BASE = 'https://your-python-backend.example.com';
 ```
 
-The backend URL must include the server that serves `/api/upload-media`, `/api/gallery/{id}`, `/gallery/{id}`, and `/uploads/...`. A GitHub Pages URL alone cannot support the media upload feature.
+---
 
 ## Features
 
-- Text or URL input
-- Color palette selection
-- Foreground/background color pickers
-- Style options: Classic, Rounded, Gradient, Two-tone
-- Save QR code as PNG
-- Live preview after generation
-
-## Notes
-
-Use the `Save QR Code` button to choose the output file location. The default filename is `stylish_qr.png`.
+- **Continuous Background Server**: Runs quietly until you decide to stop it via `stop_server.bat`.
+- **Live Status Indicator**: Real-time server health pill inside the web UI.
+- **Bold, Vibrant Dark Theme**: Deep obsidian/carbon surfaces with electric flame gradients, neon accents, and zero dull dark blue.
+- **Multi-Format Media Support**: Upload photos & videos into dedicated shareable gallery pages.
+- **Full QR Customization**: Shapes (dots, classic, liquid), corner eye styles, foreground gradients, and center icon presets.
+- **High-Res Export**: Download QR cards as PNG or SVG images with custom branding.

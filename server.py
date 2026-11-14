@@ -3,7 +3,11 @@ import json
 import os
 import re
 import shutil
+import signal
 import sqlite3
+import sys
+import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -12,6 +16,8 @@ from urllib.parse import urlparse
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_ROOT = os.path.join(BASE_DIR, "uploads")
 DB_PATH = os.path.join(BASE_DIR, "qr_database.sqlite3")
+PID_FILE = os.path.join(BASE_DIR, ".server.pid")
+START_TIME = time.time()
 os.makedirs(UPLOAD_ROOT, exist_ok=True)
 
 
@@ -193,6 +199,16 @@ class MediaServer(BaseHTTPRequestHandler):
             self.serve_file(path.lstrip("/"))
             return
 
+        if path == "/api/health" or path == "/api/status":
+            self.send_json({
+                "status": "ok",
+                "service": "QR Code Media & Database Server",
+                "port": self.server.server_address[1],
+                "pid": os.getpid(),
+                "uptime_seconds": round(time.time() - START_TIME, 1)
+            }, 200)
+            return
+
         if path == "/api/qr":
             self.send_recent_qr_records()
             return
@@ -229,6 +245,19 @@ class MediaServer(BaseHTTPRequestHandler):
 
         if path == "/api/qr":
             self.handle_qr_save()
+            return
+
+        if path == "/api/shutdown":
+            self.send_json({"status": "shutting_down", "message": "Backend server is stopping."}, 200)
+            def do_stop():
+                time.sleep(0.5)
+                if os.path.exists(PID_FILE):
+                    try:
+                        os.remove(PID_FILE)
+                    except OSError:
+                        pass
+                os._exit(0)
+            threading.Thread(target=do_stop, daemon=True).start()
             return
 
         self.send_error(404, "Not found")
@@ -413,33 +442,60 @@ class MediaServer(BaseHTTPRequestHandler):
         elif ext in (".mp4", ".mov", ".webm", ".avi"):
             content_type = "video/" + ext.lstrip(".")
 
-        with open(file_path, "rb") as file_obj:
-            data = file_obj.read()
-        self.send_response(200)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+        try:
+            with open(file_path, "rb") as file_obj:
+                data = file_obj.read()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def send_json(self, payload, status):
         body = json.dumps(payload).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Content-Length, X-Requested-With")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Content-Length, X-Requested-With")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def log_message(self, format, *args):
         return
 
 
-if __name__ == "__main__":
+def main():
     host = "0.0.0.0"
     port = int(os.environ.get("PORT", "8000"))
     server = ThreadingHTTPServer((host, port), MediaServer)
-    print(f"Serving HTTP on {host} port {port}")
-    server.serve_forever()
+
+    try:
+        with open(PID_FILE, "w", encoding="utf-8") as f:
+            f.write(str(os.getpid()))
+    except OSError:
+        pass
+
+    print(f"Serving HTTP on {host} port {port} (PID: {os.getpid()})")
+    try:
+        server.serve_forever()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    finally:
+        server.server_close()
+        if os.path.exists(PID_FILE):
+            try:
+                os.remove(PID_FILE)
+            except OSError:
+                pass
+
+
+if __name__ == "__main__":
+    main()
