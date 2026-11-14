@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import signal
+import socket
 import sqlite3
 import sys
 import threading
@@ -19,6 +20,19 @@ DB_PATH = os.path.join(BASE_DIR, "qr_database.sqlite3")
 PID_FILE = os.path.join(BASE_DIR, ".server.pid")
 START_TIME = time.time()
 os.makedirs(UPLOAD_ROOT, exist_ok=True)
+
+
+def get_lan_ip() -> str:
+    """Detect local LAN IPv4 address so mobile devices on the same Wi-Fi can open QR codes."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
 
 
 def safe_name(name: str) -> str:
@@ -205,6 +219,7 @@ class MediaServer(BaseHTTPRequestHandler):
                 "service": "QR Code Media & Database Server",
                 "port": self.server.server_address[1],
                 "pid": os.getpid(),
+                "lan_ip": get_lan_ip(),
                 "uptime_seconds": round(time.time() - START_TIME, 1)
             }, 200)
             return
@@ -388,6 +403,14 @@ class MediaServer(BaseHTTPRequestHandler):
             or self.headers.get("X-Forwarded-Scheme")
         )
         scheme = "https" if forwarded_proto and forwarded_proto.lower().startswith("https") else "http"
+
+        host_name = forwarded_host.split(":")[0]
+        port_suffix = (":" + forwarded_host.split(":")[1]) if ":" in forwarded_host else ""
+        if host_name in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+            lan_ip = get_lan_ip()
+            if lan_ip and lan_ip != "127.0.0.1":
+                forwarded_host = f"{lan_ip}{port_suffix}"
+
         gallery_url = f"{scheme}://{forwarded_host}/gallery/{gallery_id}"
         response = {"galleryId": gallery_id, "url": gallery_url, "files": saved_files}
         self.send_json(response, 200)
@@ -405,7 +428,7 @@ class MediaServer(BaseHTTPRequestHandler):
             full_path = os.path.join(gallery_dir, entry)
             if not os.path.isfile(full_path):
                 continue
-            media_type = "video" if entry.lower().endswith((".mp4", ".mov", ".webm", ".avi")) else "image"
+            media_type = "video" if entry.lower().endswith((".mp4", ".mov", ".webm", ".avi", ".mkv", ".m4v")) else "image"
             files.append({
                 "name": entry,
                 "type": media_type,
@@ -424,33 +447,70 @@ class MediaServer(BaseHTTPRequestHandler):
 
     def serve_binary(self, file_path):
         ext = os.path.splitext(file_path)[1].lower()
-        content_type = "application/octet-stream"
-        if ext in (".html",):
-            content_type = "text/html; charset=utf-8"
-        elif ext in (".js",):
-            content_type = "application/javascript; charset=utf-8"
-        elif ext in (".css",):
-            content_type = "text/css; charset=utf-8"
-        elif ext in (".png",):
-            content_type = "image/png"
-        elif ext in (".jpg", ".jpeg"):
-            content_type = "image/jpeg"
-        elif ext in (".gif",):
-            content_type = "image/gif"
-        elif ext in (".webp",):
-            content_type = "image/webp"
-        elif ext in (".mp4", ".mov", ".webm", ".avi"):
-            content_type = "video/" + ext.lstrip(".")
+        mime_map = {
+            ".html": "text/html; charset=utf-8",
+            ".js": "application/javascript; charset=utf-8",
+            ".css": "text/css; charset=utf-8",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+            ".svg": "image/svg+xml",
+            ".mp4": "video/mp4",
+            ".mov": "video/quicktime",
+            ".m4v": "video/mp4",
+            ".webm": "video/webm",
+            ".avi": "video/x-msvideo",
+            ".json": "application/json; charset=utf-8",
+        }
+        content_type = mime_map.get(ext, "application/octet-stream")
 
         try:
-            with open(file_path, "rb") as file_obj:
-                data = file_obj.read()
+            file_size = os.path.getsize(file_path)
+            range_header = self.headers.get("Range")
+
+            # Handle HTTP Range streaming for videos (required by mobile Safari / Chrome)
+            if range_header and range_header.startswith("bytes=") and ext in (".mp4", ".mov", ".m4v", ".webm", ".avi"):
+                range_val = range_header.replace("bytes=", "").strip()
+                parts = range_val.split("-")
+                start = int(parts[0]) if parts[0] else 0
+                end = int(parts[1]) if len(parts) > 1 and parts[1] else file_size - 1
+                if start >= file_size:
+                    start = file_size - 1
+                if end >= file_size:
+                    end = file_size - 1
+                content_length = end - start + 1
+
+                self.send_response(206)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+                self.send_header("Accept-Ranges", "bytes")
+                self.send_header("Content-Length", str(content_length))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+
+                with open(file_path, "rb") as f:
+                    f.seek(start)
+                    bytes_to_send = content_length
+                    chunk_size = 64 * 1024
+                    while bytes_to_send > 0:
+                        chunk = f.read(min(chunk_size, bytes_to_send))
+                        if not chunk:
+                            break
+                        self.wfile.write(chunk)
+                        bytes_to_send -= len(chunk)
+                return
+
             self.send_response(200)
             self.send_header("Content-Type", content_type)
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Length", str(file_size))
             self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Content-Length", str(len(data)))
             self.end_headers()
-            self.wfile.write(data)
+
+            with open(file_path, "rb") as file_obj:
+                shutil.copyfileobj(file_obj, self.wfile, length=64 * 1024)
         except (BrokenPipeError, ConnectionResetError):
             pass
 

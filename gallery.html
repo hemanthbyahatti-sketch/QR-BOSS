@@ -150,7 +150,7 @@
     .media-container {
       width: 100%;
       height: 240px;
-      background: #08090d;
+      background: #141724;
       position: relative;
       display: flex;
       align-items: center;
@@ -164,11 +164,36 @@
       height: 100%;
       display: block;
       object-fit: cover;
-      background: #08090d;
+      background: #141724;
       transition: transform 0.4s ease;
     }
     .media-card:hover img {
       transform: scale(1.05);
+    }
+    .media-fallback {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      color: #94a3b8;
+    }
+    .media-fallback-icon {
+      font-size: 2.4rem;
+      margin-bottom: 8px;
+    }
+    .media-fallback-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      word-break: break-all;
+    }
+    .media-fallback-hint {
+      font-size: 0.75rem;
+      color: #00f59b;
+      margin-top: 6px;
+      font-weight: 600;
     }
     .media-overlay-zoom {
       position: absolute;
@@ -432,15 +457,43 @@
         if (file.type === 'video') {
           const video = document.createElement('video');
           video.src = file.fullSrc;
-          video.controls = false;
+          video.controls = true;
           video.muted = true;
+          video.playsInline = true;
+          video.setAttribute('playsinline', '');
+          video.setAttribute('webkit-playsinline', '');
           video.preload = 'metadata';
+          video.addEventListener('click', (e) => {
+            e.stopPropagation();
+          });
+          video.onerror = () => {
+            video.style.display = 'none';
+            const fallback = document.createElement('div');
+            fallback.className = 'media-fallback';
+            fallback.innerHTML = `
+              <div class="media-fallback-icon">🎬</div>
+              <div class="media-fallback-name">${file.name || 'Video'}</div>
+              <div class="media-fallback-hint">Tap to play in full player</div>
+            `;
+            mediaContainer.appendChild(fallback);
+          };
           mediaContainer.appendChild(video);
         } else {
           const img = document.createElement('img');
-          img.src = file.fullSrc;
           img.alt = file.name || `Photo #${file.index}`;
           img.loading = 'lazy';
+          img.onerror = () => {
+            img.style.display = 'none';
+            const fallback = document.createElement('div');
+            fallback.className = 'media-fallback';
+            fallback.innerHTML = `
+              <div class="media-fallback-icon">🖼️</div>
+              <div class="media-fallback-name">${file.name || 'Photo'}</div>
+              <div class="media-fallback-hint">Tap to view full resolution</div>
+            `;
+            mediaContainer.appendChild(fallback);
+          };
+          img.src = file.fullSrc;
           mediaContainer.appendChild(img);
         }
 
@@ -495,11 +548,23 @@
         vid.src = file.fullSrc;
         vid.controls = true;
         vid.autoplay = true;
+        vid.playsInline = true;
+        vid.setAttribute('playsinline', '');
+        vid.setAttribute('webkit-playsinline', '');
         slot.appendChild(vid);
       } else {
         const img = document.createElement('img');
         img.src = file.fullSrc;
         img.alt = file.name;
+        img.onerror = () => {
+          slot.innerHTML = `
+            <div class="media-fallback" style="padding: 40px;">
+              <div class="media-fallback-icon">🖼️</div>
+              <div class="media-fallback-name">${file.name || 'Photo'}</div>
+              <div class="media-fallback-hint"><a href="${file.fullSrc}" target="_blank" style="color:#00f59b;text-decoration:underline;">Tap here to open original photo</a></div>
+            </div>
+          `;
+        };
         slot.appendChild(img);
       }
 
