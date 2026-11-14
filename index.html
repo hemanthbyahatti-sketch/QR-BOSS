@@ -121,16 +121,54 @@
 
               <!-- Media Input Tab -->
               <div class="tab-pane" id="tab-media">
-                <div class="media-upload-box">
+                <div class="media-batch-banner">
+                  <div class="batch-badge">
+                    <i data-lucide="layers"></i>
+                    <span>Bundle 10+ Photos & Videos in 1 QR Code</span>
+                  </div>
+                  <p class="batch-sub">Select minimum 10 photos or videos at once, or add in batches</p>
+                </div>
+
+                <div class="media-upload-box" id="media-dropzone">
                   <label for="media-upload-input" class="media-upload-label">
-                    <i data-lucide="images"></i>
-                    <span>Add multiple photos or videos</span>
+                    <div class="upload-icon-ring">
+                      <i data-lucide="upload-cloud"></i>
+                    </div>
+                    <span class="upload-title">Choose 10+ Photos & Videos</span>
+                    <span class="upload-subtext">Click to select files (hold Ctrl/Cmd to select 10+ files at once)</span>
                   </label>
                   <input type="file" id="media-upload-input" accept="image/*,video/*" multiple>
                 </div>
 
-                <div class="media-preview-list" id="media-preview-list">
-                  <div class="media-empty">No photos or videos added yet.</div>
+                <!-- Media Action & Status Bar -->
+                <div class="media-actions-bar" id="media-actions-bar">
+                  <div class="media-status-pill" id="media-status-pill">
+                    <span class="media-count-indicator" id="media-count-indicator">0 / 10+ Photos & Videos</span>
+                  </div>
+                  <div class="media-action-buttons">
+                    <label for="media-add-more-input" class="btn-media-action btn-add-more" title="Add more photos or videos to this QR code">
+                      <i data-lucide="plus"></i> Add More
+                    </label>
+                    <input type="file" id="media-add-more-input" accept="image/*,video/*" multiple style="display: none;">
+                    <button type="button" id="btn-clear-media" class="btn-media-action btn-clear-media" title="Clear all photos">
+                      <i data-lucide="trash-2"></i> Clear
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Instant 1-Click Demo Test Button -->
+                <div class="sample-pack-container">
+                  <button type="button" id="btn-load-10-samples" class="btn-sample-pack">
+                    <i data-lucide="sparkles"></i>
+                    <span>Load 10 Demo Photos (1-Click Test)</span>
+                  </button>
+                </div>
+
+                <!-- Media Preview Grid -->
+                <div class="media-preview-container">
+                  <div class="media-preview-list" id="media-preview-list">
+                    <div class="media-empty">No photos or videos added yet. Choose 10+ files to create your QR gallery!</div>
+                  </div>
                 </div>
               </div>
             </div>

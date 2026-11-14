@@ -105,44 +105,111 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+  // DOM bindings for Media Batch & Controls
+  const mediaActionsBar = document.getElementById('media-actions-bar');
+  const mediaCountIndicator = document.getElementById('media-count-indicator');
+  const mediaAddMoreInput = document.getElementById('media-add-more-input');
+  const btnClearMedia = document.getElementById('btn-clear-media');
+  const btnLoad10Samples = document.getElementById('btn-load-10-samples');
+
+  function updateMediaCounter() {
+    const total = state.mediaFiles.length;
+    if (mediaActionsBar) {
+      mediaActionsBar.style.display = total > 0 ? 'flex' : 'none';
+    }
+    if (mediaCountIndicator) {
+      const photos = state.mediaFiles.filter(f => f.kind !== 'video').length;
+      const videos = state.mediaFiles.filter(f => f.kind === 'video').length;
+      if (total >= 10) {
+        mediaCountIndicator.className = 'media-count-indicator ready';
+        mediaCountIndicator.innerHTML = `🎉 ${total} / 10+ Items Ready (${photos} Photo${photos === 1 ? '' : 's'}${videos ? `, ${videos} Video${videos === 1 ? '' : 's'}` : ''}) in 1 QR Code`;
+      } else if (total > 0) {
+        mediaCountIndicator.className = 'media-count-indicator pending';
+        mediaCountIndicator.innerHTML = `📁 ${total} / 10+ Items Added (Add ${10 - total} more for minimum 10)`;
+      } else {
+        mediaCountIndicator.className = 'media-count-indicator pending';
+        mediaCountIndicator.innerHTML = `0 / 10+ Photos & Videos`;
+      }
+    }
+  }
+
   function renderMediaPreviewList() {
     mediaPreviewList.innerHTML = '';
+    updateMediaCounter();
 
     if (!state.mediaFiles.length) {
       const emptyState = document.createElement('div');
       emptyState.className = 'media-empty';
-      emptyState.textContent = 'No photos or videos added yet.';
+      emptyState.textContent = 'No photos or videos added yet. Choose 10+ files or click "Load 10 Demo Photos" below to test!';
       mediaPreviewList.appendChild(emptyState);
       return;
     }
 
-    const list = document.createElement('ul');
-    list.className = 'media-file-list';
+    const grid = document.createElement('div');
+    grid.className = 'media-cards-grid';
 
     state.mediaFiles.forEach((file, index) => {
-      const item = document.createElement('li');
-      item.className = 'media-file-item';
+      const card = document.createElement('div');
+      card.className = 'media-thumb-card';
 
-      const name = document.createElement('span');
-      name.textContent = `${file.kind === 'video' ? 'Video' : 'Photo'}: ${file.name}`;
-      item.appendChild(name);
+      const previewWrapper = document.createElement('div');
+      previewWrapper.className = 'thumb-preview-wrapper';
 
-      const removeButton = document.createElement('button');
-      removeButton.type = 'button';
-      removeButton.className = 'media-remove';
-      removeButton.innerHTML = '&times;';
-      removeButton.setAttribute('aria-label', `Remove ${file.name}`);
-      removeButton.addEventListener('click', () => {
+      if (file.kind === 'video') {
+        const video = document.createElement('video');
+        video.src = file.src;
+        video.muted = true;
+        previewWrapper.appendChild(video);
+      } else {
+        const img = document.createElement('img');
+        img.src = file.src;
+        img.alt = file.name;
+        img.loading = 'lazy';
+        previewWrapper.appendChild(img);
+      }
+
+      const numBadge = document.createElement('span');
+      numBadge.className = 'thumb-badge-num';
+      numBadge.textContent = `#${index + 1}`;
+      previewWrapper.appendChild(numBadge);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'thumb-btn-remove';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.title = `Remove ${file.name}`;
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         state.mediaFiles.splice(index, 1);
         renderMediaPreviewList();
-        renderQR();
+        syncMediaQR();
       });
+      previewWrapper.appendChild(removeBtn);
 
-      item.appendChild(removeButton);
-      list.appendChild(item);
+      card.appendChild(previewWrapper);
+
+      const details = document.createElement('div');
+      details.className = 'thumb-details';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'thumb-filename';
+      nameEl.textContent = file.name;
+      nameEl.title = file.name;
+      details.appendChild(nameEl);
+
+      const sizeEl = document.createElement('div');
+      sizeEl.className = 'thumb-filesize';
+      sizeEl.textContent = file.sizeStr || (file.kind === 'video' ? 'Video File' : 'Photo Image');
+      details.appendChild(sizeEl);
+
+      card.appendChild(details);
+      grid.appendChild(card);
     });
 
-    mediaPreviewList.appendChild(list);
+    mediaPreviewList.appendChild(grid);
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
   }
 
   function generateMediaQrPayload() {
@@ -382,6 +449,14 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsDataURL(file);
   });
 
+  function formatBytes(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
   async function uploadMediaFiles(files) {
     const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
     let backendCandidate = null;
@@ -401,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
         files.forEach((file) => formData.append('mediaFiles', file));
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
         const response = await fetch(backendCandidate, {
           method: 'POST',
           body: formData,
@@ -425,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Cloud Upload via tmpfiles.org (CORS-enabled public host)
     try {
-      showStatus('Uploading media...');
+      showStatus(`Uploading ${files.length} items to cloud storage...`);
       const uploadedFiles = await Promise.all(
         files.map(async (file) => {
           const fd = new FormData();
@@ -438,7 +513,9 @@ document.addEventListener('DOMContentLoaded', () => {
           const json = await res.json();
           if (json && json.data && json.data.url) {
             const raw = json.data.url;
+            const fileId = raw.replace('https://tmpfiles.org/', '').split('/')[0];
             return {
+              id: fileId,
               name: file.name,
               type: file.type.startsWith('video/') ? 'video' : 'image',
               url: raw,
@@ -454,12 +531,8 @@ document.addEventListener('DOMContentLoaded', () => {
         finalGalleryUrl = uploadedFiles[0].url;
       } else {
         const originUrl = window.location.href.split('?')[0].replace(/index\.html$/, '');
-        const filesData = encodeURIComponent(JSON.stringify(uploadedFiles.map(f => ({
-          name: f.name,
-          type: f.type,
-          path: f.url
-        }))));
-        finalGalleryUrl = `${originUrl.replace(/\/$/, '')}/gallery.html?files=${filesData}`;
+        const ids = uploadedFiles.map(u => u.id).filter(Boolean);
+        finalGalleryUrl = `${originUrl.replace(/\/$/, '')}/gallery.html?g=${ids.join(',')}`;
       }
 
       return {
@@ -482,51 +555,159 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  mediaUploadInput.addEventListener('change', async (e) => {
-    const files = Array.from(e.target.files || []).filter((file) =>
+  async function handleIncomingFiles(files, append = true) {
+    const validFiles = Array.from(files || []).filter(file =>
       file.type.startsWith('image/') || file.type.startsWith('video/')
     );
 
-    if (!files.length) return;
+    if (!validFiles.length) return;
+
+    showStatus(`Adding ${validFiles.length} photo${validFiles.length > 1 ? 's' : ''}...`);
+
+    const newEntries = validFiles.map((file) => ({
+      id: Math.random().toString(36).substring(2, 9),
+      name: file.name,
+      kind: file.type.startsWith('video/') ? 'video' : 'image',
+      src: URL.createObjectURL(file),
+      sizeStr: formatBytes(file.size),
+      rawFile: file
+    }));
+
+    if (append) {
+      state.mediaFiles = [...state.mediaFiles, ...newEntries];
+    } else {
+      state.mediaFiles = newEntries;
+    }
+
+    renderMediaPreviewList();
+
+    // Switch tab to media
+    state.activeTab = 'media';
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-tab') === 'media');
+    });
+    document.querySelectorAll('.tab-pane').forEach(p => {
+      p.classList.toggle('active', p.id === 'tab-media');
+    });
 
     try {
-      showStatus('Uploading media...');
-      const uploadResult = await uploadMediaFiles(files);
-
-      state.mediaFiles = files.map((file) => ({
-        name: file.name,
-        kind: file.type.startsWith('video/') ? 'video' : 'image',
-        src: URL.createObjectURL(file),
-      }));
+      const allRawFiles = state.mediaFiles.map(f => f.rawFile).filter(Boolean);
+      showStatus(`Uploading ${allRawFiles.length} items to generate QR Code...`);
+      const uploadResult = await uploadMediaFiles(allRawFiles);
       state.mediaGalleryUrl = uploadResult.url;
-      renderMediaPreviewList();
-      state.activeTab = 'media';
-      document.querySelectorAll('.tab-btn').forEach((b) => {
-        b.classList.toggle('active', b.getAttribute('data-tab') === 'media');
-      });
-      document.querySelectorAll('.tab-pane').forEach((p) => {
-        p.classList.toggle('active', p.id === 'tab-media');
-      });
       renderQR();
-      const photoCount = files.filter((file) => file.type.startsWith('image/')).length;
-      const videoCount = files.filter((file) => file.type.startsWith('video/')).length;
-      const mediaLabel = photoCount && videoCount ? 'Media' : photoCount ? 'Photo' : 'Video';
-      showStatus(`${mediaLabel}${files.length > 1 ? 's' : ''} uploaded successfully!`);
-    } catch (error) {
-      console.error('Media upload handled:', error);
-      state.mediaFiles = files.map((file) => ({
-        name: file.name,
-        kind: file.type.startsWith('video/') ? 'video' : 'image',
-        src: URL.createObjectURL(file),
-      }));
+      const count = state.mediaFiles.length;
+      showStatus(`🎉 ${count} photo${count > 1 ? 's' : ''} bundled into single QR Code!`);
+    } catch (err) {
+      console.warn('Upload fallback to local preview:', err);
       state.mediaGalleryUrl = window.location.href;
+      renderQR();
+      showStatus(`${state.mediaFiles.length} items ready in QR Code!`);
+    }
+  }
+
+  async function syncMediaQR() {
+    if (!state.mediaFiles.length) {
+      state.mediaGalleryUrl = '';
+      renderQR();
+      return;
+    }
+
+    const allRawFiles = state.mediaFiles.map(f => f.rawFile).filter(Boolean);
+    if (allRawFiles.length > 0) {
+      try {
+        const uploadResult = await uploadMediaFiles(allRawFiles);
+        state.mediaGalleryUrl = uploadResult.url;
+      } catch (err) {
+        console.warn('Sync upload error:', err);
+      }
+    }
+    renderQR();
+  }
+
+  // 1-Click Demo: Generate 10 Real HD Sample Photos
+  async function generate10SamplePhotos() {
+    showStatus('Creating 10 vibrant sample photos...');
+    const samplesMeta = [
+      { name: '1_sunset_horizon.png', title: 'Sunset Horizon', c1: '#ff0055', c2: '#ff7700', icon: '☀️' },
+      { name: '2_neon_cyberpunk.png', title: 'Neon Cyberpunk', c1: '#7928ca', c2: '#00f0ff', icon: '⚡' },
+      { name: '3_emerald_forest.png', title: 'Emerald Forest', c1: '#00b09b', c2: '#96c93d', icon: '🌲' },
+      { name: '4_deep_ocean.png', title: 'Deep Ocean', c1: '#0052d4', c2: '#4364f7', icon: '🌊' },
+      { name: '5_golden_hour.png', title: 'Golden Hour', c1: '#f857a6', c2: '#ff5858', icon: '✨' },
+      { name: '6_cosmic_galaxy.png', title: 'Cosmic Galaxy', c1: '#4776e6', c2: '#8e54e9', icon: '🌌' },
+      { name: '7_mountain_peak.png', title: 'Mountain Peak', c1: '#1f4037', c2: '#99f2c8', icon: '🏔️' },
+      { name: '8_tropical_paradise.png', title: 'Tropical Paradise', c1: '#fe8c00', c2: '#f83600', icon: '🏝️' },
+      { name: '9_urban_architecture.png', title: 'Urban Architecture', c1: '#3a7bd5', c2: '#3a6073', icon: '🏙️' },
+      { name: '10_aurora_borealis.png', title: 'Aurora Borealis', c1: '#00f2fe', c2: '#4facfe', icon: '🎆' }
+    ];
+
+    const sampleFiles = await Promise.all(samplesMeta.map(async (meta) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 600;
+      canvas.height = 600;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, 0, 600, 600);
+      grad.addColorStop(0, meta.c1);
+      grad.addColorStop(1, meta.c2);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 600, 600);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.beginPath();
+      ctx.arc(300, 300, 220, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.font = '90px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(meta.icon, 300, 250);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.fillText(meta.title, 300, 380);
+
+      ctx.font = '22px sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.fillText('Sample Photo #QR_BOSS', 300, 430);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      return new File([blob], meta.name, { type: 'image/png' });
+    }));
+
+    await handleIncomingFiles(sampleFiles, false);
+  }
+
+  // File Inputs & Controls Listeners
+  if (mediaUploadInput) {
+    mediaUploadInput.addEventListener('change', async (e) => {
+      await handleIncomingFiles(e.target.files, true);
+      mediaUploadInput.value = '';
+    });
+  }
+
+  if (mediaAddMoreInput) {
+    mediaAddMoreInput.addEventListener('change', async (e) => {
+      await handleIncomingFiles(e.target.files, true);
+      mediaAddMoreInput.value = '';
+    });
+  }
+
+  if (btnClearMedia) {
+    btnClearMedia.addEventListener('click', () => {
+      state.mediaFiles = [];
+      state.mediaGalleryUrl = '';
       renderMediaPreviewList();
       renderQR();
-      showStatus('Media ready!');
-    } finally {
-      mediaUploadInput.value = '';
-    }
-  });
+      showStatus('All media cleared');
+    });
+  }
+
+  if (btnLoad10Samples) {
+    btnLoad10Samples.addEventListener('click', async () => {
+      await generate10SamplePhotos();
+    });
+  }
 
   renderMediaPreviewList();
 
